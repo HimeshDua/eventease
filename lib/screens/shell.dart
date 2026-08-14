@@ -3,10 +3,20 @@ import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
 import '../models/app_user.dart';
+import '../repositories/misc_repositories.dart';
 import '../services/auth_service.dart';
-import 'stubs.dart';
+import 'admin/admin_dashboard.dart';
+import 'admin/events_screen.dart';
+import 'admin/stats_screen.dart';
+import 'admin/users_screen.dart';
+import 'attendee/attendee_dashboard.dart';
+import 'attendee/discover_screen.dart';
+import 'attendee/my_events_screen.dart';
+import 'organizer/organizer_dashboard.dart';
+import 'shared/notifications_screen.dart';
+import 'shared/profile_screen.dart';
 
-/// Foundation for role-aware, adaptive application navigation.
+/// Role-aware adaptive application navigation (SRS navigation requirements).
 class HomeShell extends StatefulWidget {
   final AppUser user;
   const HomeShell({super.key, required this.user});
@@ -70,7 +80,12 @@ class _HomeShellState extends State<HomeShell> {
               destinations: [
                 for (final destination in destinations)
                   NavigationDestination(
-                    icon: Icon(destination.icon),
+                    icon: destination.label == 'Alerts'
+                        ? _AlertsIcon(
+                            icon: destination.icon,
+                            userId: widget.user.id,
+                          )
+                        : Icon(destination.icon),
                     label: destination.label,
                   ),
               ],
@@ -86,54 +101,64 @@ class _HomeShellState extends State<HomeShell> {
         _ShellDestination(
           'Organizer Home',
           Icons.dashboard_outlined,
-          OrganizerStub(),
+          OrganizerDashboard(),
         ),
-        _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
-        _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
+        _ShellDestination('Discover', Icons.explore_outlined, DiscoverScreen()),
+        _ShellDestination('My Events', Icons.event_outlined, MyEventsScreen()),
         _ShellDestination(
           'Alerts',
           Icons.notifications_outlined,
-          NotificationsStub(),
+          NotificationsScreen(),
         ),
-        _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+        _ShellDestination('Profile', Icons.person_outline, ProfileScreen()),
       ];
     }
     if (role == Roles.admin) {
       return const [
-        _ShellDestination('Admin Home', Icons.dashboard_outlined, AdminStub()),
         _ShellDestination(
-          'Events',
-          Icons.event_outlined,
-          FoundationPlaceholder('Events'),
+          'Admin Home',
+          Icons.dashboard_outlined,
+          AdminDashboard(),
         ),
-        _ShellDestination(
-          'Users',
-          Icons.group_outlined,
-          FoundationPlaceholder('Users'),
-        ),
-        _ShellDestination(
-          'Reports',
-          Icons.bar_chart_outlined,
-          FoundationPlaceholder('Reports'),
-        ),
-        _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+        _ShellDestination('Events', Icons.event_outlined, EventsScreen()),
+        _ShellDestination('Users', Icons.group_outlined, UsersScreen()),
+        _ShellDestination('Reports', Icons.bar_chart_outlined, StatsScreen()),
+        _ShellDestination('Profile', Icons.person_outline, ProfileScreen()),
       ];
     }
     return const [
-      _ShellDestination(
-        'Home',
-        Icons.home_outlined,
-        FoundationPlaceholder('Home'),
-      ),
-      _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
-      _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
+      _ShellDestination('Home', Icons.home_outlined, AttendeeDashboard()),
+      _ShellDestination('Discover', Icons.explore_outlined, DiscoverScreen()),
+      _ShellDestination('My Events', Icons.event_outlined, MyEventsScreen()),
       _ShellDestination(
         'Alerts',
         Icons.notifications_outlined,
-        NotificationsStub(),
+        NotificationsScreen(),
       ),
-      _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+      _ShellDestination('Profile', Icons.person_outline, ProfileScreen()),
     ];
+  }
+}
+
+/// Unread notification badge for the Alerts destination.
+class _AlertsIcon extends StatelessWidget {
+  final IconData icon;
+  final String userId;
+  const _AlertsIcon({required this.icon, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final notifications = context.read<NotificationRepository>();
+    return StreamBuilder<int>(
+      stream: notifications.unreadCount(userId),
+      builder: (context, snapshot) {
+        final unread = snapshot.data ?? 0;
+        if (unread == 0) {
+          return Icon(icon);
+        }
+        return Badge.count(count: unread, child: Icon(icon));
+      },
+    );
   }
 }
 
