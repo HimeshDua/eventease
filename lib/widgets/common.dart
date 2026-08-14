@@ -19,21 +19,25 @@ class EmptyView extends StatelessWidget {
   const EmptyView(this.message, {super.key, this.icon = Icons.inbox_outlined});
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 56,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      );
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class ErrorView extends StatelessWidget {
@@ -43,22 +47,26 @@ class ErrorView extends StatelessWidget {
   const ErrorView(this.message, {super.key, this.actionLabel, this.onAction});
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            EmptyView(message, icon: Icons.error_outline),
-            if (actionLabel != null && onAction != null)
-              FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        EmptyView(message, icon: Icons.error_outline),
+        if (actionLabel != null && onAction != null)
+          FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
+      ],
+    ),
+  );
 }
 
 void showSnack(BuildContext context, String message, {bool error = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(message),
-    backgroundColor: error ? Theme.of(context).colorScheme.errorContainer : null,
-  ));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: error
+          ? Theme.of(context).colorScheme.errorContainer
+          : null,
+    ),
+  );
 }
 
 /// Confirmation dialog for destructive actions (SRS 1.6.20).
@@ -70,11 +78,13 @@ Future<bool> confirm(BuildContext context, String title, String body) async {
       content: Text(body),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel')),
+          onPressed: () => Navigator.pop(c, false),
+          child: const Text('Cancel'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('Confirm')),
+          onPressed: () => Navigator.pop(c, true),
+          child: const Text('Confirm'),
+        ),
       ],
     ),
   );
@@ -89,8 +99,12 @@ class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
   final Widget? trailing;
-  const EventCard(
-      {super.key, required this.event, required this.onTap, this.trailing});
+  const EventCard({
+    super.key,
+    required this.event,
+    required this.onTap,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -118,26 +132,37 @@ class EventCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(event.title,
-                            style: Theme.of(context).textTheme.titleMedium),
+                        Text(
+                          event.title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                         const SizedBox(height: 4),
-                        Text(formatEventDate(event.startTime),
-                            style: Theme.of(context).textTheme.bodySmall),
-                        Text(event.location,
-                            style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          formatEventDate(event.startTime),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          event.location,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                         const SizedBox(height: 6),
-                        Wrap(spacing: 6, children: [
-                          Chip(
-                            label: Text(event.category),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          Chip(
-                            label: Text(event.isFull
-                                ? 'Full'
-                                : '${event.availableSeats} seats left'),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ]),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            Chip(
+                              label: Text(event.category),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            Chip(
+                              label: Text(
+                                event.isFull
+                                    ? 'Full'
+                                    : '${event.availableSeats} seats left',
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

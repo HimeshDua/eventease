@@ -27,7 +27,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final destinations = _destinationsFor(widget.user.role);
-    final selectedIndex = _index.clamp(0, destinations.length - 1) as int;
+    final selectedIndex = _index.clamp(0, destinations.length - 1);
     final selected = destinations[selectedIndex];
     final railMode = MediaQuery.sizeOf(context).width >= 600;
 
@@ -83,27 +83,55 @@ class _HomeShellState extends State<HomeShell> {
   List<_ShellDestination> _destinationsFor(String role) {
     if (role == Roles.organizer) {
       return const [
-        _ShellDestination('Organizer Home', Icons.dashboard_outlined, OrganizerStub()),
+        _ShellDestination(
+          'Organizer Home',
+          Icons.dashboard_outlined,
+          OrganizerStub(),
+        ),
         _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
         _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
-        _ShellDestination('Alerts', Icons.notifications_outlined, NotificationsStub()),
+        _ShellDestination(
+          'Alerts',
+          Icons.notifications_outlined,
+          NotificationsStub(),
+        ),
         _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
       ];
     }
     if (role == Roles.admin) {
       return const [
         _ShellDestination('Admin Home', Icons.dashboard_outlined, AdminStub()),
-        _ShellDestination('Events', Icons.event_outlined, FoundationPlaceholder('Events')),
-        _ShellDestination('Users', Icons.group_outlined, FoundationPlaceholder('Users')),
-        _ShellDestination('Reports', Icons.bar_chart_outlined, FoundationPlaceholder('Reports')),
+        _ShellDestination(
+          'Events',
+          Icons.event_outlined,
+          FoundationPlaceholder('Events'),
+        ),
+        _ShellDestination(
+          'Users',
+          Icons.group_outlined,
+          FoundationPlaceholder('Users'),
+        ),
+        _ShellDestination(
+          'Reports',
+          Icons.bar_chart_outlined,
+          FoundationPlaceholder('Reports'),
+        ),
         _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
       ];
     }
     return const [
-      _ShellDestination('Home', Icons.home_outlined, FoundationPlaceholder('Home')),
+      _ShellDestination(
+        'Home',
+        Icons.home_outlined,
+        FoundationPlaceholder('Home'),
+      ),
       _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
       _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
-      _ShellDestination('Alerts', Icons.notifications_outlined, NotificationsStub()),
+      _ShellDestination(
+        'Alerts',
+        Icons.notifications_outlined,
+        NotificationsStub(),
+      ),
       _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
     ];
   }

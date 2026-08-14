@@ -1,18 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../core/constants.dart';
 import '../models/event.dart';
+import '../models/gallery_item.dart';
+import '../services/storage_service.dart';
 
 /// All reads and writes for events. Screens must use this, never Firestore
 /// directly.
 class EventRepository {
-  EventRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  EventRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+    FirebaseStorage? storage,
+  }) : _db = firestore ?? FirebaseFirestore.instance,
+       _auth = auth ?? FirebaseAuth.instance,
+       _storageService = StorageService(storage: storage);
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final StorageService _storageService;
 
   CollectionReference<Map<String, dynamic>> get _events =>
       _db.collection(Col.events);
@@ -25,10 +33,12 @@ class EventRepository {
       .where('status', isEqualTo: EventStatus.approved)
       .orderBy('startTime')
       .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map(Event.fromDoc)
-          .where((event) => !event.hasEnded)
-          .toList());
+      .map(
+        (snapshot) => snapshot.docs
+            .map(Event.fromDoc)
+            .where((event) => !event.hasEnded)
+            .toList(),
+      );
 
   Stream<List<Event>> byOrganizer(String organizerId) => _events
       .where('organizerId', isEqualTo: organizerId)
@@ -36,8 +46,9 @@ class EventRepository {
       .map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
 
   /// Admin: everything; display ordering belongs to the presentation layer.
-  Stream<List<Event>> all() =>
-      _events.snapshots().map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
+  Stream<List<Event>> all() => _events.snapshots().map(
+    (snapshot) => snapshot.docs.map(Event.fromDoc).toList(),
+  );
 
   Stream<Event> watch(String eventId) =>
       _events.doc(eventId).snapshots().map(Event.fromDoc);
@@ -66,10 +77,7 @@ class EventRepository {
   }
 
   /// Updates an event owned by the signed-in organizer.
-  Future<void> updateOwned(
-    String eventId,
-    Map<String, dynamic> changes,
-  ) async {
+  Future<void> updateOwned(String eventId, Map<String, dynamic> changes) async {
     final ownerId = _requireCurrentUserId();
     const protectedFields = {
       'organizerId',
@@ -81,7 +89,9 @@ class EventRepository {
       'createdAt',
     };
     if (changes.keys.any(protectedFields.contains)) {
-      throw ArgumentError('This update contains server-controlled event fields.');
+      throw ArgumentError(
+        'This update contains server-controlled event fields.',
+      );
     }
 
     await _db.runTransaction((transaction) async {
@@ -122,19 +132,22 @@ class EventRepository {
     String eventId,
     String status, {
     bool changeReviewPending = false,
-  }) =>
-      _events.doc(eventId).update({
-        'status': status,
-        'changeReviewPending': changeReviewPending,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+  }) => _events.doc(eventId).update({
+    'status': status,
+    'changeReviewPending': changeReviewPending,
+    'updatedAt': FieldValue.serverTimestamp(),
+  });
 
   /// An organizer can request cancellation but cannot cancel an event directly.
   Future<void> requestCancellation(String eventId, String reason) async {
     final ownerId = _requireCurrentUserId();
     final trimmedReason = reason.trim();
     if (trimmedReason.isEmpty) {
-      throw ArgumentError.value(reason, 'reason', 'A cancellation reason is required.');
+      throw ArgumentError.value(
+        reason,
+        'reason',
+        'A cancellation reason is required.',
+      );
     }
 
     await _db.runTransaction((transaction) async {
@@ -145,7 +158,9 @@ class EventRepository {
       }
       final event = Event.fromDoc(eventSnapshot);
       if (event.organizerId != ownerId) {
-        throw StateError('You can only request cancellation for your own event.');
+        throw StateError(
+          'You can only request cancellation for your own event.',
+        );
       }
       if (event.status == EventStatus.cancelled || event.hasEnded) {
         throw StateError('This event can no longer be cancelled.');
@@ -179,11 +194,41 @@ class EventRepository {
     });
   }
 
-  /// Deliberately unavailable until M07 can remove associated Storage media.
-  Future<void> adminDelete(String eventId) {
-    throw UnsupportedError(
-      'Event deletion is unavailable until associated media cleanup is configured.',
-    );
+  /// Admin deletes only a zero-registration event and all of its media.
+  /// Events with registrations are preserved for history (SRS 1.6.17).
+  Future<void> adminDelete(String eventId) async {
+    final eventRef = _events.doc(eventId);
+    final eventSnapshot = await eventRef.get();
+    if (!eventSnapshot.exists) {
+      throw StateError('Event not found.');
+    }
+    final event = Event.fromDoc(eventSnapshot);
+    if (event.registeredCount > 0) {
+      throw StateError(
+        'Events with registrations cannot be deleted. They are kept for history.',
+      );
+    }
+
+    // Remove gallery media documents and their Storage objects.
+    final galleryDocs = await _db
+        .collection(Col.gallery)
+        .where('eventId', isEqualTo: eventId)
+        .get();
+    for (final doc in galleryDocs.docs) {
+      final item = GalleryItem.fromDoc(doc);
+      await _storageService.deleteByUrl(item.imageUrl);
+    }
+    for (final doc in galleryDocs.docs) {
+      await doc.reference.delete();
+    }
+
+    // Remove the cover image object when present.
+    final coverPath = event.imageUrl;
+    if (coverPath != null && coverPath.isNotEmpty) {
+      await _storageService.deleteByUrl(coverPath);
+    }
+
+    await eventRef.delete();
   }
 
   /// Client-side discovery filters (SRS 1.6.4).
@@ -205,7 +250,9 @@ class EventRepository {
           !event.location.toLowerCase().contains(normalizedQuery)) {
         return false;
       }
-      if (category != null && category.isNotEmpty && event.category != category) {
+      if (category != null &&
+          category.isNotEmpty &&
+          event.category != category) {
         return false;
       }
       if (date != null &&

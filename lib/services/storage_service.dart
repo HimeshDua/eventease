@@ -6,7 +6,7 @@ class StorageService {
   final FirebaseStorage _storage;
 
   StorageService({FirebaseStorage? storage})
-      : _storage = storage ?? FirebaseStorage.instance;
+    : _storage = storage ?? FirebaseStorage.instance;
 
   /// Uploads an image selected with ImagePicker and returns its download URL.
   Future<String> uploadImage(XFile file, String path) async {
@@ -17,7 +17,7 @@ class StorageService {
         bytes,
         SettableMetadata(contentType: 'image/jpeg'),
       );
-      return reference.getDownloadURL();
+      return await reference.getDownloadURL();
     } on FirebaseException catch (error) {
       throw Exception(_friendlyError(error));
     } catch (_) {

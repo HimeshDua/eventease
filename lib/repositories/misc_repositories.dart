@@ -7,7 +7,10 @@ import '../models/event_feedback.dart';
 
 /// Favorites (SRS 1.6.8) — one doc per user+event.
 class FavoriteRepository {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  FavoriteRepository({FirebaseFirestore? firestore})
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   String _docId(String userId, String eventId) => '${userId}_$eventId';
 
@@ -30,7 +33,10 @@ class FavoriteRepository {
 
 /// Feedback (SRS 1.6.13) — doc id user_event prevents duplicates by design.
 class FeedbackRepository {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  FeedbackRepository({FirebaseFirestore? firestore})
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   Future<void> submit(EventFeedback fb) => _db
       .collection(Col.feedback)
@@ -53,9 +59,25 @@ class FeedbackRepository {
           .exists;
 }
 
+/// Notification types (SRS 1.6.9). Kept in one place for callers.
+class NotificationTypes {
+  static const registration = 'registration';
+  static const reminder = 'reminder';
+  static const eventChanged = 'eventChanged';
+  static const cancelled = 'cancelled';
+  static const announcement = 'announcement';
+  static const feedbackRequest = 'feedbackRequest';
+  static const approval = 'approval';
+  static const rejection = 'rejection';
+  static const roleApproved = 'roleApproved';
+}
+
 /// In-app notifications (SRS 1.6.9). Fan-out helpers write one doc per user.
 class NotificationRepository {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  NotificationRepository({FirebaseFirestore? firestore})
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   Stream<List<AppNotification>> byUser(String userId) => _db
       .collection(Col.notifications)
@@ -77,18 +99,17 @@ class NotificationRepository {
     required String type,
     required String title,
     required String message,
-  }) =>
-      _db.collection(Col.notifications).add({
-        'userId': userId,
-        'eventId': eventId,
-        'type': type,
-        'title': title,
-        'message': message,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+  }) => _db.collection(Col.notifications).add({
+    'userId': userId,
+    'eventId': eventId,
+    'type': type,
+    'title': title,
+    'message': message,
+    'isRead': false,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
 
-  /// Notify every registered (non-cancelled) user of an event.
+  /// Creates a notification only if [docId] does not already exist.
   Future<void> sendOnce({
     required String docId,
     required String userId,
@@ -122,7 +143,8 @@ class NotificationRepository {
     final regs = await _db
         .collection(Col.registrations)
         .where('eventId', isEqualTo: eventId)
-        .where('status', whereIn: ['registered', 'attended']).get();
+        .where('status', whereIn: ['registered', 'attended'])
+        .get();
     const maxBatchWrites = 450;
     for (var start = 0; start < regs.docs.length; start += maxBatchWrites) {
       final end = start + maxBatchWrites > regs.docs.length
@@ -152,7 +174,10 @@ class NotificationRepository {
 
 /// Admin user management (SRS 1.6.17).
 class UserRepository {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  UserRepository({FirebaseFirestore? firestore})
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   Stream<List<AppUser>> all() => _db
       .collection(Col.users)
@@ -164,15 +189,22 @@ class UserRepository {
     required String name,
     required String phone,
     String? profileImageUrl,
-  }) =>
-      _db.collection(Col.users).doc(userId).update({
-        'name': name,
-        'phone': phone,
-        'profileImageUrl': profileImageUrl,
-      });
+  }) => _db.collection(Col.users).doc(userId).update({
+    'name': name,
+    'phone': phone,
+    'profileImageUrl': profileImageUrl,
+  });
 
-  Future<void> requestOrganizerAccess(String userId) =>
-      _db.collection(Col.users).doc(userId).update({'organizerRequested': true});
+  Future<void> requestOrganizerAccess(String userId) => _db
+      .collection(Col.users)
+      .doc(userId)
+      .update({'organizerRequested': true});
+
+  /// SRS 1.6.15 reminder preference; the client caches it in shared_preferences.
+  Future<void> setRemindersEnabled(String userId, bool enabled) => _db
+      .collection(Col.users)
+      .doc(userId)
+      .update({'remindersEnabled': enabled});
 
   Future<void> setRole(String userId, String role) =>
       _db.collection(Col.users).doc(userId).update({'role': role});
@@ -180,4 +212,3 @@ class UserRepository {
   Future<void> setActive(String userId, bool active) =>
       _db.collection(Col.users).doc(userId).update({'active': active});
 }
-    required String type,

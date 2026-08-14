@@ -58,8 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     controller.dispose();
     if (email == null || email.isEmpty) return;
+    final auth = context.read<AuthService>();
     try {
-      await context.read<AuthService>().resetPassword(email);
+      await auth.resetPassword(email);
       if (mounted) showSnack(context, 'Password reset email sent.');
     } catch (error) {
       if (mounted) showSnack(context, AuthService.friendlyError(error), error: true);
