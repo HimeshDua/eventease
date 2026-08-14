@@ -174,6 +174,28 @@ class EventRepository {
     });
   }
 
+  /// Admin rejection of an organizer's cancellation request. Clears the
+  /// request fields so the event continues as active.
+  Future<void> rejectCancellation(String eventId) async {
+    await _db.runTransaction((transaction) async {
+      final eventRef = _events.doc(eventId);
+      final eventSnapshot = await transaction.get(eventRef);
+      if (!eventSnapshot.exists) {
+        throw StateError('Event not found.');
+      }
+      final event = Event.fromDoc(eventSnapshot);
+      if (!event.cancellationRequested) {
+        throw StateError('This event has no pending cancellation request.');
+      }
+
+      transaction.update(eventRef, {
+        'cancellationRequested': false,
+        'cancellationReason': null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   /// Admin approval of an organizer's cancellation request.
   Future<void> approveCancellation(String eventId) async {
     await _db.runTransaction((transaction) async {

@@ -1,0 +1,297 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/constants.dart';
+import '../../models/app_user.dart';
+import '../../repositories/misc_repositories.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/common.dart';
+
+/// Admin user management: search, activate, deactivate, roles (SRS 1.6.17).
+class UsersScreen extends StatefulWidget {
+  const UsersScreen({super.key});
+
+  @override
+  State<UsersScreen> createState() => _UsersScreenState();
+}
+
+class _UsersScreenState extends State<UsersScreen> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final users = context.read<UserRepository>();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Users')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: SearchBar(
+              controller: _search,
+              hintText: 'Search by name or email',
+              leading: const Icon(Icons.search),
+              trailing: [
+                if (_query.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _search.clear();
+                      setState(() => _query = '');
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+              ],
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<List<AppUser>>(
+              stream: users.all(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const ErrorView('Could not load users.');
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LoadingView();
+                }
+                var items = snapshot.data ?? const <AppUser>[];
+                final normalized = _query.trim().toLowerCase();
+                if (normalized.isNotEmpty) {
+                  items = items
+                      .where(
+                        (u) =>
+                            u.name.toLowerCase().contains(normalized) ||
+                            u.email.toLowerCase().contains(normalized),
+                      )
+                      .toList();
+                }
+                items = [...items]
+                  ..sort(
+                    (a, b) =>
+                        a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+                  );
+                if (items.isEmpty) {
+                  return const EmptyView('No users match your search.');
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final user = items[index];
+                    return _UserCard(user: user);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserCard extends StatefulWidget {
+  final AppUser user;
+  const _UserCard({required this.user});
+
+  @override
+  State<_UserCard> createState() => _UserCardState();
+}
+
+class _UserCardState extends State<_UserCard> {
+  bool _busy = false;
+
+  Future<void> _setRole(String role) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final users = context.read<UserRepository>();
+      await users.setRole(widget.user.id, role);
+      if (role == Roles.organizer) {
+        await context.read<NotificationRepository>().send(
+          userId: widget.user.id,
+          type: NotificationTypes.roleApproved,
+          title: 'Organizer access approved',
+          message: 'You can now create and manage events.',
+        );
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Role updated to ${_roleLabel(role)}.')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$error'),
+          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleActive() async {
+    final user = widget.user;
+    final currentAdmin = context.read<AuthService>().currentUser;
+    if (user.id == currentAdmin?.id && user.active) {
+      showSnack(
+        context,
+        'You cannot deactivate your own account.',
+        error: true,
+      );
+      return;
+    }
+    final newActive = !user.active;
+    final confirmed = await confirm(
+      context,
+      newActive ? 'Activate account?' : 'Deactivate account?',
+      newActive
+          ? '${user.name} will be able to sign in again.'
+          : '${user.name} will not be able to sign in until reactivated.',
+    );
+    if (!confirmed) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<UserRepository>().setActive(user.id, newActive);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            newActive ? 'Account activated.' : 'Account deactivated.',
+          ),
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$error'),
+          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _roleLabel(String role) => switch (role) {
+    Roles.organizer => 'Organizer',
+    Roles.admin => 'Administrator',
+    _ => 'Attendee',
+  };
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      color: user.active ? null : colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(child: Text(_initials(user.name))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        user.email,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (!user.active)
+                        Text(
+                          'Deactivated',
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Change role',
+                  onSelected: _setRole,
+                  itemBuilder: (context) => [
+                    for (final role in const [
+                      Roles.attendee,
+                      Roles.organizer,
+                      Roles.admin,
+                    ])
+                      PopupMenuItem(
+                        value: role,
+                        child: Row(
+                          children: [
+                            if (user.role == role)
+                              Icon(
+                                Icons.check,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                            const SizedBox(width: 8),
+                            Text(_roleLabel(role)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  child: Chip(
+                    label: Text(_roleLabel(user.role)),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+            if (user.organizerRequested && user.role == Roles.attendee)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.badge_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('Requested organizer access')),
+                    FilledButton.tonal(
+                      onPressed: _busy ? null : () => _setRole(Roles.organizer),
+                      child: const Text('Approve'),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: _busy ? null : _toggleActive,
+                  icon: Icon(
+                    user.active
+                        ? Icons.block_outlined
+                        : Icons.check_circle_outline,
+                  ),
+                  label: Text(user.active ? 'Deactivate' : 'Activate'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
