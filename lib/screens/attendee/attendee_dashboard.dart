@@ -112,6 +112,16 @@ class DashboardBody extends StatelessWidget {
                             ConnectionState.waiting ||
                         regSnapshot.connectionState == ConnectionState.waiting;
 
+                    print(
+                      "AttendeeDashboard: eventSnapshot: ${eventSnapshot.connectionState}, regSnapshot: ${regSnapshot.connectionState}, favSnapshot: ${favSnapshot.connectionState}, notificationSnapshot: ${notificationSnapshot.connectionState}",
+                    );
+
+                    print(
+                      isLoading
+                          ? "AttendeeDashboard: loading..."
+                          : "AttendeeDashboard: loaded. upcomingEvents: ${upcomingEvents.length}, upcomingRegistered: ${upcomingRegistered.length}, favoriteEvents: ${favoriteEvents.length}, unreadCount: $unreadCount",
+                    );
+
                     if (hasError) {
                       return const ErrorView(
                         'We could not load your dashboard. Please try again.',

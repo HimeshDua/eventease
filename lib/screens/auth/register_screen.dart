@@ -36,15 +36,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _busy = true);
     try {
       await context.read<AuthService>().register(
-            name: _name.text.trim(),
-            email: _email.text.trim(),
-            phone: _phone.text.trim(),
-            password: _password.text,
-            wantsOrganizer: _wantsOrganizer,
-          );
-      if (mounted) Navigator.pop(context);
+        name: _name.text.trim(),
+        email: _email.text.trim().toLowerCase(),
+        phone: _phone.text.trim(),
+        password: _password.text,
+        wantsOrganizer: _wantsOrganizer,
+      );
+      if (mounted) showSnack(context, 'Registration successful!', error: false);
+      Navigator.pop(context);
     } catch (e) {
-      if (mounted) showSnack(context, AuthService.friendlyError(e), error: true);
+      // ADD THIS LINE to see the exact issue in your terminal logs:
+      print("REGISTRATION ACTUAL ERROR: $e");
+
+      if (mounted)
+        showSnack(context, AuthService.friendlyError(e), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -71,16 +76,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _email,
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) =>
-                    (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                validator: (v) => (v == null || !v.contains('@'))
+                    ? 'Enter a valid email'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phone,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
                 keyboardType: TextInputType.phone,
-                validator: (v) =>
-                    (v == null || v.trim().length < 7) ? 'Enter a valid phone' : null,
+                validator: (v) => (v == null || v.trim().length < 7)
+                    ? 'Enter a valid phone'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -88,9 +95,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   labelText: 'Password',
                   suffixIcon: IconButton(
-                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                   ),
                 ),
                 obscureText: _obscurePassword,
@@ -100,9 +114,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmPassword,
-                decoration: const InputDecoration(labelText: 'Confirm password'),
+                decoration: const InputDecoration(
+                  labelText: 'Confirm password',
+                ),
                 obscureText: _obscurePassword,
-                validator: (value) => value != _password.text ? 'Passwords do not match' : null,
+                validator: (value) =>
+                    value != _password.text ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 8),
               SwitchListTile(
@@ -116,8 +133,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onPressed: _busy ? null : _register,
                 child: _busy
                     ? const SizedBox(
-                        height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Register'),
               ),
             ],

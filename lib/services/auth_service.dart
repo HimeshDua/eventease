@@ -16,7 +16,8 @@ class AuthService extends ChangeNotifier {
   AppUser? get currentUser => _currentUser;
 
   /// Emits the AppUser profile (with role) whenever auth state changes.
-  Stream<AppUser?> get userStream => _auth.authStateChanges().asyncExpand((fbUser) {
+  Stream<AppUser?> get userStream =>
+      _auth.authStateChanges().asyncExpand((fbUser) {
         if (fbUser == null) {
           _currentUser = null;
           return Stream<AppUser?>.value(null);
@@ -35,7 +36,9 @@ class AuthService extends ChangeNotifier {
     bool wantsOrganizer = false,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
+      email: email,
+      password: password,
+    );
     // Default role is attendee. Organizer requests start as attendee and
     // are upgraded by an admin (SRS 1.6.1).
     final user = AppUser(
@@ -65,7 +68,8 @@ class AuthService extends ChangeNotifier {
 
   Future<void> changePassword(String newPassword) async {
     final user = _auth.currentUser;
-    if (user == null) throw Exception('Please sign in again to change your password.');
+    if (user == null)
+      throw Exception('Please sign in again to change your password.');
     await user.updatePassword(newPassword);
   }
 

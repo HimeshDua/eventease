@@ -30,10 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     try {
       await context.read<AuthService>().login(
-          _email.text.trim(), _password.text);
+        _email.text.trim().toLowerCase(),
+        _password.text,
+      );
+
+      print("Login successful");
+      showSnack(context, 'Login successful!', error: false);
       // AuthGate rebuilds automatically via userStream.
     } catch (e) {
-      if (mounted) showSnack(context, AuthService.friendlyError(e), error: true);
+      if (mounted) showSnack(context, e.toString(), error: true);
+      showSnack(context, AuthService.friendlyError(e), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -51,8 +57,15 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: const InputDecoration(labelText: 'Email'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send email')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Send email'),
+          ),
         ],
       ),
     );
@@ -63,7 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await auth.resetPassword(email);
       if (mounted) showSnack(context, 'Password reset email sent.');
     } catch (error) {
-      if (mounted) showSnack(context, AuthService.friendlyError(error), error: true);
+      if (mounted)
+        showSnack(context, AuthService.friendlyError(error), error: true);
     }
   }
 
@@ -78,19 +92,25 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.event_available,
-                    size: 72, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.event_available,
+                  size: 72,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(height: 8),
-                Text('EventEase',
-                    style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  'EventEase',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const Text('Smart Event Discovery & Management'),
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _email,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Enter a valid email'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -99,29 +119,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     suffixIcon: IconButton(
-                      tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      tooltip: _obscurePassword
+                          ? 'Show password'
+                          : 'Hide password',
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
                     ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Minimum 6 characters'
+                      : null,
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: _busy ? null : _login,
                   child: _busy
                       ? const SizedBox(
-                          height: 20, width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text('Login'),
                 ),
                 TextButton(
-                    onPressed: _forgotPassword,
-                    child: const Text('Forgot Password?')),
+                  onPressed: _forgotPassword,
+                  child: const Text('Forgot Password?'),
+                ),
                 TextButton(
-                  onPressed: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const RegisterScreen())),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
                   child: const Text("Don't have an account? Register"),
                 ),
               ],

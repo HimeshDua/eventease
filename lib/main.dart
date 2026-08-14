@@ -21,31 +21,30 @@ import 'widgets/common.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const EventEaseApp());
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        Provider(create: (_) => EventRepository()),
+        Provider(create: (_) => RegistrationRepository()),
+        Provider(create: (_) => FavoriteRepository()),
+        Provider(create: (_) => FeedbackRepository()),
+        Provider(create: (_) => NotificationRepository()),
+        Provider(create: (_) => UserRepository()),
+        Provider(create: (_) => StorageService()),
+        Provider(create: (_) => GalleryRepository()),
+        Provider(create: (_) => ContactRepository()),
+        Provider(create: (_) => MapLauncherService()),
+      ],
+      child: const EventEaseApp(),
+    ),
+  );
 }
 
-class EventEaseApp extends StatefulWidget {
+class EventEaseApp extends StatelessWidget {
   const EventEaseApp({super.key});
-
-  @override
-  State<EventEaseApp> createState() => _EventEaseAppState();
-}
-
-class _EventEaseAppState extends State<EventEaseApp> {
-  late Future<FirebaseApp> _initialization;
-
-  @override
-  void initState() {
-    super.initState();
-    _initialization = _initializeFirebase();
-  }
-
-  Future<FirebaseApp> _initializeFirebase() =>
-      Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  void _retryInitialization() {
-    setState(() => _initialization = _initializeFirebase());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,39 +54,7 @@ class _EventEaseAppState extends State<EventEaseApp> {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
-      home: FutureBuilder<FirebaseApp>(
-        future: _initialization,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const SplashScreen();
-          }
-          if (snapshot.hasError) {
-            return Scaffold(
-              body: ErrorView(
-                'EventEase could not connect to its services. Please check your connection and try again.',
-                actionLabel: 'Try again',
-                onAction: _retryInitialization,
-              ),
-            );
-          }
-          return MultiProvider(
-            providers: [
-              ChangeNotifierProvider(create: (_) => AuthService()),
-              Provider(create: (_) => EventRepository()),
-              Provider(create: (_) => RegistrationRepository()),
-              Provider(create: (_) => FavoriteRepository()),
-              Provider(create: (_) => FeedbackRepository()),
-              Provider(create: (_) => NotificationRepository()),
-              Provider(create: (_) => UserRepository()),
-              Provider(create: (_) => StorageService()),
-              Provider(create: (_) => GalleryRepository()),
-              Provider(create: (_) => ContactRepository()),
-              Provider(create: (_) => MapLauncherService()),
-            ],
-            child: const AuthGate(),
-          );
-        },
-      ),
+      home: const AuthGate(),
     );
   }
 }
@@ -99,11 +66,13 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AppUser?>(
-      stream: context.read<AuthService>().userStream,
+      stream: context.watch<AuthService>().userStream,
       builder: (context, snap) {
         if (snap.hasError) {
           return Scaffold(
-            body: ErrorView('We could not load your account. Please try again.'),
+            body: ErrorView(
+              'We could not load your account. Please try again.',
+            ),
           );
         }
 
