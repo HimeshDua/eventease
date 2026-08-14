@@ -76,7 +76,6 @@ class DashboardBody extends StatelessWidget {
                         eventSnapshot.data ?? const <Event>[];
                     final regs = regSnapshot.data ?? const <Registration>[];
 
-                    final registeredEvents = <Event>[];
                     final favoriteEvents = <Event>[];
                     final upcomingRegistered = <Event>[];
 
@@ -85,10 +84,6 @@ class DashboardBody extends StatelessWidget {
                           .where((e) => e.id == reg.eventId)
                           .firstOrNull;
                       if (event == null) continue;
-                      if (reg.status == RegistrationStatus.registered ||
-                          reg.status == RegistrationStatus.attended) {
-                        registeredEvents.add(event);
-                      }
                       if (reg.status == RegistrationStatus.registered &&
                           !event.hasEnded) {
                         upcomingRegistered.add(event);
