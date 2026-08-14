@@ -16,6 +16,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -32,15 +40,29 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    if (_email.text.trim().isEmpty) {
-      showSnack(context, 'Enter your email first, then tap Forgot Password.');
-      return;
-    }
+    final controller = TextEditingController(text: _email.text.trim());
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset password'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'Email'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send email')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (email == null || email.isEmpty) return;
     try {
-      await context.read<AuthService>().resetPassword(_email.text.trim());
+      await context.read<AuthService>().resetPassword(email);
       if (mounted) showSnack(context, 'Password reset email sent.');
-    } catch (e) {
-      if (mounted) showSnack(context, AuthService.friendlyError(e), error: true);
+    } catch (error) {
+      if (mounted) showSnack(context, AuthService.friendlyError(error), error: true);
     }
   }
 
@@ -72,8 +94,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _password,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    suffixIcon: IconButton(
+                      tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    ),
+                  ),
                   validator: (v) =>
                       (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
                 ),

@@ -1,94 +1,118 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     function signedIn() { return request.auth != null; }
-    function me() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function currentUser() { return get(userPath(request.auth.uid)).data; }
+    function activeUser() { return signedIn() && currentUser().active == true; }
+    function isAdmin() { return activeUser() && currentUser().role == 'admin'; }
+    function isOrganizer() { return activeUser() && currentUser().role == 'organizer'; }
+    function ownsEvent(eventId) {
+      return signedIn() && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid;
     }
-    function isAdmin() { return signedIn() && me().role == 'admin'; }
-    function isOrganizer() { return signedIn() && me().role == 'organizer'; }
+    function hasOnlyChanged(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
 
     match /users/{userId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
-        // Users cannot self-assign a privileged role (SRS security rules).
-        && request.resource.data.role == 'attendee';
-      allow update: if signedIn() && (
-        isAdmin() ||
-        // Own profile, but role/active can only be changed by admin.
-        (request.auth.uid == userId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.active == resource.data.active)
+        && request.resource.data.role == 'attendee'
+        && request.resource.data.active == true
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isAdmin() || (
+        request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.active == resource.data.active
       );
       allow delete: if isAdmin();
     }
 
     match /events/{eventId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        isAdmin() || resource.data.organizerId == request.auth.uid || resource.data.status == 'approved'
+      );
       allow create: if (isOrganizer() || isAdmin())
         && request.resource.data.organizerId == request.auth.uid
-        && request.resource.data.status == 'pending';
-      allow update: if isAdmin()
-        // Organizer can edit own event but not approve it themselves...
-        || (isOrganizer() && resource.data.organizerId == request.auth.uid
-            && request.resource.data.status != 'approved')
-        // ...except registeredCount increments from the registration
-        // transaction, which any signed-in user may trigger.
-        || (signedIn()
-            && request.resource.data.diff(resource.data)
-                 .affectedKeys().hasOnly(['registeredCount']));
+        && request.resource.data.status == 'pending'
+        && request.resource.data.registeredCount == 0
+        && request.resource.data.latitude is number
+        && request.resource.data.longitude is number;
+      allow update: if isAdmin() || (
+        isOrganizer() && resource.data.organizerId == request.auth.uid
+        && request.resource.data.status != 'approved'
+      ) || (
+        activeUser() && hasOnlyChanged(['registeredCount'])
+        && (request.resource.data.registeredCount == resource.data.registeredCount + 1
+          || request.resource.data.registeredCount == resource.data.registeredCount - 1)
+      );
       allow delete: if isAdmin();
     }
 
-    match /registrations/{regId} {
+    match /registrations/{registrationId} {
       allow read: if signedIn() && (
-        resource.data.userId == request.auth.uid || isOrganizer() || isAdmin());
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid;
-      // Own cancellation, or organizer/admin check-in.
-      allow update: if signedIn() && (
-        resource.data.userId == request.auth.uid || isOrganizer() || isAdmin());
-      allow delete: if isAdmin();
-    }
-
-    match /attendance/{id} {
-      allow read: if signedIn();
-      allow create: if isOrganizer() || isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    match /favorites/{id} {
-      allow read, write: if signedIn()
-        && request.resource == null
-          ? resource.data.userId == request.auth.uid
-          : request.resource.data.userId == request.auth.uid;
-    }
-
-    match /feedback/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn()
+        resource.data.userId == request.auth.uid || isAdmin() || ownsEvent(resource.data.eventId)
+      );
+      allow create: if activeUser()
+        && registrationId == request.auth.uid + '_' + request.resource.data.eventId
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
+        && request.resource.data.status == 'registered';
+      allow update: if (
+        request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.eventId == resource.data.eventId
+        && request.resource.data.status == 'cancelled'
+      ) || (
+        (isAdmin() || ownsEvent(resource.data.eventId))
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.eventId == resource.data.eventId
+        && request.resource.data.status == 'attended'
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || ownsEvent(resource.data.eventId));
+      allow create: if (isAdmin() || ownsEvent(request.resource.data.eventId))
+        && attendanceId == request.resource.data.userId + '_' + request.resource.data.eventId;
       allow update, delete: if isAdmin();
     }
 
-    match /notifications/{id} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if signedIn();
-      allow update: if signedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if isAdmin();
+    match /favorites/{favoriteId} {
+      allow read, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && favoriteId == request.auth.uid + '_' + request.resource.data.eventId
+        && request.resource.data.userId == request.auth.uid;
     }
 
-    match /gallery/{id} {
+    match /feedback/{feedbackId} {
       allow read: if signedIn();
-      allow create: if isOrganizer() || isAdmin();
+      allow create: if activeUser()
+        && feedbackId == request.auth.uid + '_' + request.resource.data.eventId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && get(/databases/$(database)/documents/registrations/$(feedbackId)).data.status == 'attended';
+      allow update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if activeUser() && (
+        request.resource.data.userId == request.auth.uid || isAdmin()
+        || (request.resource.data.eventId != null && ownsEvent(request.resource.data.eventId))
+      );
+      allow update: if signedIn() && resource.data.userId == request.auth.uid
+        && hasOnlyChanged(['isRead']);
       allow delete: if isAdmin();
     }
 
-    match /contactMessages/{id} {
-      allow create: if signedIn();
+    match /gallery/{galleryId} {
+      allow read: if signedIn();
+      allow create: if (isAdmin() || ownsEvent(request.resource.data.eventId))
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.endTime <= request.time;
+      allow delete: if isAdmin() || ownsEvent(resource.data.eventId);
+    }
+
+    match /contactMessages/{messageId} {
+      allow create: if activeUser() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
     }
   }

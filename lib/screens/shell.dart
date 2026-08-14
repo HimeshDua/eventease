@@ -6,8 +6,7 @@ import '../models/app_user.dart';
 import '../services/auth_service.dart';
 import 'stubs.dart';
 
-/// Role-based navigation shell (SRS 1.6.2). Each tab points at a screen —
-/// teammates replace the Stub screens with real implementations.
+/// Foundation for role-aware, adaptive application navigation.
 class HomeShell extends StatefulWidget {
   final AppUser user;
   const HomeShell({super.key, required this.user});
@@ -20,38 +19,21 @@ class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
   @override
-  Widget build(BuildContext context) {
-    final role = widget.user.role;
+  void didUpdateWidget(covariant HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.role != widget.user.role) _index = 0;
+  }
 
-    final tabs = <({String label, IconData icon, Widget screen})>[
-      (label: 'Discover', icon: Icons.explore, screen: const DiscoverStub()),
-      (label: 'My Events', icon: Icons.event, screen: const MyEventsStub()),
-      (label: 'Favorites', icon: Icons.favorite, screen: const FavoritesStub()),
-      (
-        label: 'Alerts',
-        icon: Icons.notifications,
-        screen: const NotificationsStub()
-      ),
-      if (role == Roles.organizer)
-        (
-          label: 'Organize',
-          icon: Icons.edit_calendar,
-          screen: const OrganizerStub()
-        ),
-      if (role == Roles.admin)
-        (
-          label: 'Admin',
-          icon: Icons.admin_panel_settings,
-          screen: const AdminStub()
-        ),
-      (label: 'Profile', icon: Icons.person, screen: const ProfileStub()),
-    ];
+  @override
+  Widget build(BuildContext context) {
+    final destinations = _destinationsFor(widget.user.role);
+    final selectedIndex = _index.clamp(0, destinations.length - 1) as int;
+    final selected = destinations[selectedIndex];
+    final railMode = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tabs[_index].label == 'Discover'
-            ? 'EventEase'
-            : tabs[_index].label),
+        title: Text(selected.label == 'Home' ? 'EventEase' : selected.label),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -60,15 +42,76 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: tabs[_index].screen,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          for (final t in tabs)
-            NavigationDestination(icon: Icon(t.icon), label: t.label),
-        ],
-      ),
+      body: railMode
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: selectedIndex,
+                  labelType: NavigationRailLabelType.all,
+                  onDestinationSelected: _select,
+                  destinations: [
+                    for (final destination in destinations)
+                      NavigationRailDestination(
+                        icon: Icon(destination.icon),
+                        label: Text(destination.label),
+                      ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: selected.screen),
+              ],
+            )
+          : selected.screen,
+      bottomNavigationBar: railMode
+          ? null
+          : NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: _select,
+              destinations: [
+                for (final destination in destinations)
+                  NavigationDestination(
+                    icon: Icon(destination.icon),
+                    label: destination.label,
+                  ),
+              ],
+            ),
     );
   }
+
+  void _select(int value) => setState(() => _index = value);
+
+  List<_ShellDestination> _destinationsFor(String role) {
+    if (role == Roles.organizer) {
+      return const [
+        _ShellDestination('Organizer Home', Icons.dashboard_outlined, OrganizerStub()),
+        _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
+        _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
+        _ShellDestination('Alerts', Icons.notifications_outlined, NotificationsStub()),
+        _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+      ];
+    }
+    if (role == Roles.admin) {
+      return const [
+        _ShellDestination('Admin Home', Icons.dashboard_outlined, AdminStub()),
+        _ShellDestination('Events', Icons.event_outlined, FoundationPlaceholder('Events')),
+        _ShellDestination('Users', Icons.group_outlined, FoundationPlaceholder('Users')),
+        _ShellDestination('Reports', Icons.bar_chart_outlined, FoundationPlaceholder('Reports')),
+        _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+      ];
+    }
+    return const [
+      _ShellDestination('Home', Icons.home_outlined, FoundationPlaceholder('Home')),
+      _ShellDestination('Discover', Icons.explore_outlined, DiscoverStub()),
+      _ShellDestination('My Events', Icons.event_outlined, MyEventsStub()),
+      _ShellDestination('Alerts', Icons.notifications_outlined, NotificationsStub()),
+      _ShellDestination('Profile', Icons.person_outline, ProfileStub()),
+    ];
+  }
+}
+
+class _ShellDestination {
+  final String label;
+  final IconData icon;
+  final Widget screen;
+  const _ShellDestination(this.label, this.icon, this.screen);
 }

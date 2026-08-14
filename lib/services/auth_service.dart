@@ -11,22 +11,23 @@ class AuthService extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
 
-  AppUser? currentUser;
+  AppUser? _currentUser;
+
+  AppUser? get currentUser => _currentUser;
 
   /// Emits the AppUser profile (with role) whenever auth state changes.
-  Stream<AppUser?> get userStream =>
-      _auth.authStateChanges().asyncMap((fbUser) async {
+  Stream<AppUser?> get userStream => _auth.authStateChanges().asyncExpand((fbUser) {
         if (fbUser == null) {
-          currentUser = null;
-          return null;
+          _currentUser = null;
+          return Stream<AppUser?>.value(null);
         }
-        final doc =
-            await _db.collection(Col.users).doc(fbUser.uid).get();
-        currentUser = doc.exists ? AppUser.fromDoc(doc) : null;
-        return currentUser;
+        return _db.collection(Col.users).doc(fbUser.uid).snapshots().map((doc) {
+          _currentUser = doc.exists ? AppUser.fromDoc(doc) : null;
+          return _currentUser;
+        });
       });
 
-  Future<AppUser> register({
+  Future<void> register({
     required String name,
     required String email,
     required String phone,
@@ -43,14 +44,14 @@ class AuthService extends ChangeNotifier {
       email: email,
       phone: phone,
       role: Roles.attendee,
+      organizerRequested: wantsOrganizer,
     );
     await _db.collection(Col.users).doc(user.id).set({
       ...user.toMap(),
       'organizerRequested': wantsOrganizer,
     });
-    currentUser = user;
+    _currentUser = user;
     notifyListeners();
-    return user;
   }
 
   Future<void> login(String email, String password) async {
@@ -61,6 +62,12 @@ class AuthService extends ChangeNotifier {
 
   Future<void> resetPassword(String email) =>
       _auth.sendPasswordResetEmail(email: email);
+
+  Future<void> changePassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Please sign in again to change your password.');
+    await user.updatePassword(newPassword);
+  }
 
   /// Turns FirebaseAuth exceptions into user-friendly messages (SRS 1.6.1).
   static String friendlyError(Object e) {
@@ -76,6 +83,10 @@ class AuthService extends ChangeNotifier {
           return 'Password is too weak (minimum 6 characters).';
         case 'invalid-email':
           return 'Please enter a valid email address.';
+        case 'network-request-failed':
+          return 'A network connection is required. Please try again.';
+        case 'requires-recent-login':
+          return 'Please sign in again before changing your password.';
         default:
           return e.message ?? 'Authentication failed.';
       }

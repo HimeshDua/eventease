@@ -8,6 +8,8 @@ class AppUser {
   final String role; // Roles.attendee / organizer / admin
   final String? profileImageUrl;
   final bool active;
+  final bool organizerRequested;
+  final bool remindersEnabled;
   final DateTime? createdAt;
 
   const AppUser({
@@ -18,6 +20,8 @@ class AppUser {
     required this.role,
     this.profileImageUrl,
     this.active = true,
+    this.organizerRequested = false,
+    this.remindersEnabled = true,
     this.createdAt,
   });
 
@@ -31,6 +35,8 @@ class AppUser {
       role: d['role'] ?? 'attendee',
       profileImageUrl: d['profileImageUrl'],
       active: d['active'] ?? true,
+      organizerRequested: d['organizerRequested'] ?? false,
+      remindersEnabled: d['remindersEnabled'] ?? true,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -42,6 +48,8 @@ class AppUser {
         'role': role,
         'profileImageUrl': profileImageUrl,
         'active': active,
+        'organizerRequested': organizerRequested,
+        'remindersEnabled': remindersEnabled,
         'createdAt': createdAt == null
             ? FieldValue.serverTimestamp()
             : Timestamp.fromDate(createdAt!),

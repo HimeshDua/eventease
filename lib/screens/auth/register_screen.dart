@@ -16,8 +16,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
   bool _wantsOrganizer = false;
   bool _busy = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _password.dispose();
+    _confirmPassword.dispose();
+    super.dispose();
+  }
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
@@ -73,10 +85,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _password,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                  ),
+                ),
+                obscureText: _obscurePassword,
                 validator: (v) =>
                     (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPassword,
+                decoration: const InputDecoration(labelText: 'Confirm password'),
+                obscureText: _obscurePassword,
+                validator: (value) => value != _password.text ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 8),
               SwitchListTile(

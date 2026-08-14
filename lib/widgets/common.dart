@@ -22,9 +22,15 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: Colors.grey),
+            Icon(icon, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 12),
-            Text(message, style: const TextStyle(color: Colors.grey)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
           ],
         ),
       );
@@ -32,16 +38,26 @@ class EmptyView extends StatelessWidget {
 
 class ErrorView extends StatelessWidget {
   final String message;
-  const ErrorView(this.message, {super.key});
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  const ErrorView(this.message, {super.key, this.actionLabel, this.onAction});
   @override
-  Widget build(BuildContext context) =>
-      EmptyView(message, icon: Icons.error_outline);
+  Widget build(BuildContext context) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EmptyView(message, icon: Icons.error_outline),
+            if (actionLabel != null && onAction != null)
+              FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ),
+      );
 }
 
 void showSnack(BuildContext context, String message, {bool error = false}) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(message),
-    backgroundColor: error ? Colors.red.shade700 : null,
+    backgroundColor: error ? Theme.of(context).colorScheme.errorContainer : null,
   ));
 }
 

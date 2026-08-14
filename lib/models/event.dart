@@ -7,6 +7,8 @@ class Event {
   final String description;
   final String category;
   final String location;
+  final double latitude;
+  final double longitude;
   final String rules;
   final String contactInfo;
   final DateTime startTime;
@@ -15,6 +17,9 @@ class Event {
   final int registeredCount; // maintained by registration transaction
   final String status; // EventStatus.*
   final String? imageUrl;
+  final bool cancellationRequested;
+  final String? cancellationReason;
+  final bool changeReviewPending;
   final DateTime? createdAt;
 
   const Event({
@@ -24,6 +29,8 @@ class Event {
     required this.description,
     required this.category,
     required this.location,
+    this.latitude = 0,
+    this.longitude = 0,
     required this.rules,
     required this.contactInfo,
     required this.startTime,
@@ -32,6 +39,9 @@ class Event {
     this.registeredCount = 0,
     required this.status,
     this.imageUrl,
+    this.cancellationRequested = false,
+    this.cancellationReason,
+    this.changeReviewPending = false,
     this.createdAt,
   });
 
@@ -39,6 +49,7 @@ class Event {
   bool get isFull => availableSeats <= 0;
   bool get hasStarted => DateTime.now().isAfter(startTime);
   bool get hasEnded => DateTime.now().isAfter(endTime);
+  bool get isCompleted => status == 'completed' || hasEnded;
 
   factory Event.fromDoc(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
@@ -49,6 +60,8 @@ class Event {
       description: d['description'] ?? '',
       category: d['category'] ?? '',
       location: d['location'] ?? '',
+      latitude: (d['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (d['longitude'] as num?)?.toDouble() ?? 0,
       rules: d['rules'] ?? '',
       contactInfo: d['contactInfo'] ?? '',
       startTime: (d['startTime'] as Timestamp).toDate(),
@@ -57,6 +70,9 @@ class Event {
       registeredCount: d['registeredCount'] ?? 0,
       status: d['status'] ?? 'pending',
       imageUrl: d['imageUrl'],
+      cancellationRequested: d['cancellationRequested'] ?? false,
+      cancellationReason: d['cancellationReason'],
+      changeReviewPending: d['changeReviewPending'] ?? false,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -67,6 +83,8 @@ class Event {
         'description': description,
         'category': category,
         'location': location,
+        'latitude': latitude,
+        'longitude': longitude,
         'rules': rules,
         'contactInfo': contactInfo,
         'startTime': Timestamp.fromDate(startTime),
@@ -75,6 +93,9 @@ class Event {
         'registeredCount': registeredCount,
         'status': status,
         'imageUrl': imageUrl,
+        'cancellationRequested': cancellationRequested,
+        'cancellationReason': cancellationReason,
+        'changeReviewPending': changeReviewPending,
         'createdAt': createdAt == null
             ? FieldValue.serverTimestamp()
             : Timestamp.fromDate(createdAt!),

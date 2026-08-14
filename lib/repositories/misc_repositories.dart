@@ -43,6 +43,11 @@ class FeedbackRepository {
       .snapshots()
       .map((s) => s.docs.map(EventFeedback.fromDoc).toList());
 
+  Stream<List<EventFeedback>> all() => _db
+      .collection(Col.feedback)
+      .snapshots()
+      .map((s) => s.docs.map(EventFeedback.fromDoc).toList());
+
   Future<bool> hasSubmitted(String userId, String eventId) async =>
       (await _db.collection(Col.feedback).doc('${userId}_$eventId').get())
           .exists;
@@ -59,15 +64,24 @@ class NotificationRepository {
       .snapshots()
       .map((s) => s.docs.map(AppNotification.fromDoc).toList());
 
+  Stream<int> unreadCount(String userId) => _db
+      .collection(Col.notifications)
+      .where('userId', isEqualTo: userId)
+      .where('isRead', isEqualTo: false)
+      .snapshots()
+      .map((snapshot) => snapshot.size);
+
   Future<void> send({
     required String userId,
     String? eventId,
+    required String type,
     required String title,
     required String message,
   }) =>
       _db.collection(Col.notifications).add({
         'userId': userId,
         'eventId': eventId,
+        'type': type,
         'title': title,
         'message': message,
         'isRead': false,
@@ -75,8 +89,33 @@ class NotificationRepository {
       });
 
   /// Notify every registered (non-cancelled) user of an event.
+  Future<void> sendOnce({
+    required String docId,
+    required String userId,
+    String? eventId,
+    required String type,
+    required String title,
+    required String message,
+  }) async {
+    final ref = _db.collection(Col.notifications).doc(docId);
+    await _db.runTransaction((transaction) async {
+      if ((await transaction.get(ref)).exists) return;
+      transaction.set(ref, {
+        'userId': userId,
+        'eventId': eventId,
+        'type': type,
+        'title': title,
+        'message': message,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  /// Notify every registered (non-cancelled) user of an event.
   Future<void> sendToEventRegistrants({
     required String eventId,
+    required String type,
     required String title,
     required String message,
   }) async {
@@ -84,18 +123,25 @@ class NotificationRepository {
         .collection(Col.registrations)
         .where('eventId', isEqualTo: eventId)
         .where('status', whereIn: ['registered', 'attended']).get();
-    final batch = _db.batch();
-    for (final r in regs.docs) {
-      batch.set(_db.collection(Col.notifications).doc(), {
-        'userId': r['userId'],
-        'eventId': eventId,
-        'title': title,
-        'message': message,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+    const maxBatchWrites = 450;
+    for (var start = 0; start < regs.docs.length; start += maxBatchWrites) {
+      final end = start + maxBatchWrites > regs.docs.length
+          ? regs.docs.length
+          : start + maxBatchWrites;
+      final batch = _db.batch();
+      for (final registration in regs.docs.sublist(start, end)) {
+        batch.set(_db.collection(Col.notifications).doc(), {
+          'userId': registration['userId'],
+          'eventId': eventId,
+          'type': type,
+          'title': title,
+          'message': message,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
     }
-    await batch.commit();
   }
 
   Future<void> markRead(String notificationId) => _db
@@ -113,9 +159,25 @@ class UserRepository {
       .snapshots()
       .map((s) => s.docs.map(AppUser.fromDoc).toList());
 
+  Future<void> updateProfile(
+    String userId, {
+    required String name,
+    required String phone,
+    String? profileImageUrl,
+  }) =>
+      _db.collection(Col.users).doc(userId).update({
+        'name': name,
+        'phone': phone,
+        'profileImageUrl': profileImageUrl,
+      });
+
+  Future<void> requestOrganizerAccess(String userId) =>
+      _db.collection(Col.users).doc(userId).update({'organizerRequested': true});
+
   Future<void> setRole(String userId, String role) =>
       _db.collection(Col.users).doc(userId).update({'role': role});
 
   Future<void> setActive(String userId, bool active) =>
       _db.collection(Col.users).doc(userId).update({'active': active});
 }
+    required String type,

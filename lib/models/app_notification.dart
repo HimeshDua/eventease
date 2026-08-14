@@ -5,6 +5,7 @@ class AppNotification {
   final String id;
   final String userId;
   final String? eventId;
+  final String type;
   final String title;
   final String message;
   final bool isRead;
@@ -14,6 +15,7 @@ class AppNotification {
     required this.id,
     required this.userId,
     this.eventId,
+    this.type = '',
     required this.title,
     required this.message,
     this.isRead = false,
@@ -26,6 +28,7 @@ class AppNotification {
       id: doc.id,
       userId: d['userId'] ?? '',
       eventId: d['eventId'],
+      type: d['type'] ?? '',
       title: d['title'] ?? '',
       message: d['message'] ?? '',
       isRead: d['isRead'] ?? false,
@@ -36,6 +39,7 @@ class AppNotification {
   Map<String, dynamic> toMap() => {
         'userId': userId,
         'eventId': eventId,
+        'type': type,
         'title': title,
         'message': message,
         'isRead': isRead,

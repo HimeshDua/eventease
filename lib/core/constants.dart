@@ -32,6 +32,15 @@ class EventCategories {
   ];
 }
 
+abstract final class MapDefaults {
+  static const karachiLatitude = 24.8607;
+  static const karachiLongitude = 67.0011;
+  static const pickerZoom = 12.0;
+  static const venueZoom = 15.0;
+  static const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  static const userAgentPackageName = 'com.eventease.eventease';
+}
+
 /// Firestore collection names — always use these, never raw strings.
 class Col {
   static const users = 'users';
