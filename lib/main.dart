@@ -15,8 +15,7 @@ import 'widgets/common.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const EventEaseApp());
 }
 
@@ -54,6 +53,12 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<AppUser?>(
       stream: context.read<AuthService>().userStream,
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Scaffold(
+            body: Center(child: Text('An error occurred: ${snap.error}')),
+          );
+        }
+
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: LoadingView());
         }
