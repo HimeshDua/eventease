@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() { return signedIn() && me().role == 'admin'; }
+    function isOrganizer() { return signedIn() && me().role == 'organizer'; }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId
+        // Users cannot self-assign a privileged role (SRS security rules).
+        && request.resource.data.role == 'attendee';
+      allow update: if signedIn() && (
+        isAdmin() ||
+        // Own profile, but role/active can only be changed by admin.
+        (request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.active == resource.data.active)
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create: if (isOrganizer() || isAdmin())
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin()
+        // Organizer can edit own event but not approve it themselves...
+        || (isOrganizer() && resource.data.organizerId == request.auth.uid
+            && request.resource.data.status != 'approved')
+        // ...except registeredCount increments from the registration
+        // transaction, which any signed-in user may trigger.
+        || (signedIn()
+            && request.resource.data.diff(resource.data)
+                 .affectedKeys().hasOnly(['registeredCount']));
+      allow delete: if isAdmin();
+    }
+
+    match /registrations/{regId} {
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid || isOrganizer() || isAdmin());
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+      // Own cancellation, or organizer/admin check-in.
+      allow update: if signedIn() && (
+        resource.data.userId == request.auth.uid || isOrganizer() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /attendance/{id} {
+      allow read: if signedIn();
+      allow create: if isOrganizer() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /favorites/{id} {
+      allow read, write: if signedIn()
+        && request.resource == null
+          ? resource.data.userId == request.auth.uid
+          : request.resource.data.userId == request.auth.uid;
+    }
+
+    match /feedback/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      allow update, delete: if isAdmin();
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn();
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /gallery/{id} {
+      allow read: if signedIn();
+      allow create: if isOrganizer() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contactMessages/{id} {
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
