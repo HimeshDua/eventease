@@ -38,6 +38,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await context.read<NotificationRepository>().sendToEventRegistrants(
             eventId: widget.eventId,
@@ -45,15 +46,17 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             title: 'Announcement',
             message: message,
           );
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Announcement sent to participants.')),
       );
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

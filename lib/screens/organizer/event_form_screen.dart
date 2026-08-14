@@ -242,6 +242,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   }
 
   Future<void> _pickStartTime() async {
+    final navigator = Navigator.of(context);
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
@@ -250,8 +251,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
       helpText: 'Event start date',
     );
     if (date == null) return;
+    final overlay = navigator.overlay;
+    if (overlay == null) return;
     final time = await showTimePicker(
-      context: context,
+      // ignore: use_build_context_synchronously
+      context: overlay.context,
       initialTime: TimeOfDay.fromDateTime(now),
       helpText: 'Event start time',
     );
@@ -268,6 +272,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   }
 
   Future<void> _pickEndTime() async {
+    final navigator = Navigator.of(context);
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
@@ -276,8 +281,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
       helpText: 'Event end date',
     );
     if (date == null) return;
+    final overlay = navigator.overlay;
+    if (overlay == null) return;
     final time = await showTimePicker(
-      context: context,
+      // ignore: use_build_context_synchronously
+      context: overlay.context,
       initialTime: TimeOfDay.fromDateTime(
         _endTime ?? now.add(const Duration(hours: 2)),
       ),
@@ -323,13 +331,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       final events = context.read<EventRepository>();
       final storage = context.read<StorageService>();
 
       final eventId = widget.eventId ?? events.newId();
 
-      // Upload cover image first so the event doc references the final URL.
       if (_pendingImage != null) {
         _imageUrl = await storage.uploadImage(
           _pendingImage!,
@@ -374,6 +382,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
         });
       }
 
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
@@ -383,10 +392,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
       );
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

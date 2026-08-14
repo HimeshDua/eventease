@@ -52,6 +52,7 @@ class _GalleryUploadScreenState extends State<GalleryUploadScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       final storage = context.read<StorageService>();
       final gallery = context.read<GalleryRepository>();
@@ -69,15 +70,17 @@ class _GalleryUploadScreenState extends State<GalleryUploadScreen> {
           caption: _caption.text.trim().isEmpty ? null : _caption.text.trim(),
         ),
       );
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Photo uploaded to the gallery.')),
       );
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

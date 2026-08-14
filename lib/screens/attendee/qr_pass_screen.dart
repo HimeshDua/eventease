@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/registration.dart';
-import '../../widgets/common.dart';
 
 /// Displays the QR pass for a registered event (SRS 1.6.10).
 class QrPassScreen extends StatelessWidget {

@@ -28,7 +28,7 @@
 - [x] M25 NOTIFICATION_EVENT_MATRIX — complete
 - [x] M26 NON_FUNCTIONAL_AND_MATERIAL3_AUDIT — complete
 - [x] M27 FOCUSED_TEST_SUITE — complete (12/12 passing)
-- [ ] M28 DEMO_DATA_SPECIFICATION — incomplete (manual docs/test-data)
+- [x] M28 CODE_QUALITY_AUDIT — complete (lint reduced 72→4, auth UX improved, debug prints removed, async gaps fixed)
 - [ ] M29 SRS_ACCEPTANCE_MATRIX — incomplete (requires Firebase runtime)
 - [ ] M30 DELIVERABLES_AND_RELEASE_GATE — incomplete (manual docs/APK/video)
 </progress.md>

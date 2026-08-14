@@ -69,7 +69,6 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
   );
 }
 
-/// Confirmation dialog for destructive actions (SRS 1.6.20).
 Future<bool> confirm(BuildContext context, String title, String body) async {
   final ok = await showDialog<bool>(
     context: context,
@@ -94,7 +93,6 @@ Future<bool> confirm(BuildContext context, String title, String body) async {
 String formatEventDate(DateTime d) =>
     DateFormat('EEE, d MMM yyyy • h:mm a').format(d);
 
-/// Shared status chip for event lifecycle states (SRS 1.6.3).
 class StatusBadge extends StatelessWidget {
   final String status;
   const StatusBadge({super.key, required this.status});
@@ -118,7 +116,6 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-/// Standard event card used on Discover, Favorites, My Events (SRS 1.6.3).
 class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;

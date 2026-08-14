@@ -246,6 +246,10 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
   bool _busy = false;
 
   Future<void> _cancelWithReason() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final events = context.read<EventRepository>();
+    final notifications = context.read<NotificationRepository>();
     final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
@@ -261,7 +265,7 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: const Text('Dismiss'),
           ),
           FilledButton(
             onPressed: () =>
@@ -273,20 +277,17 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
     );
     controller.dispose();
     if (reason == null || reason.isEmpty) {
-      showSnack(context, 'A cancellation reason is required.', error: true);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('A cancellation reason is required.'),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
       return;
     }
-    final confirmed = await confirm(
-      context,
-      'Cancel this event?',
-      'All registered attendees will be notified.',
-    );
-    if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      final events = context.read<EventRepository>();
-      final notifications = context.read<NotificationRepository>();
       await events.setStatus(widget.event.id, EventStatus.cancelled);
       await notifications.sendToEventRegistrants(
         eventId: widget.event.id,
@@ -294,12 +295,14 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
         title: 'Event cancelled',
         message: '${widget.event.title} has been cancelled. Reason: $reason',
       );
+      if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event cancelled.')));
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -308,6 +311,10 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
   }
 
   Future<void> _delete() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final events = context.read<EventRepository>();
     final confirmed = await confirm(
       context,
       'Delete this event permanently?',
@@ -315,17 +322,17 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     try {
-      await context.read<EventRepository>().adminDelete(widget.event.id);
+      await events.adminDelete(widget.event.id);
+      if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event deleted.')));
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

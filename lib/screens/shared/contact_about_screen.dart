@@ -41,6 +41,7 @@ class _ContactAboutScreenState extends State<ContactAboutScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await context.read<ContactRepository>().submit(
         userId: user.id,
@@ -49,15 +50,17 @@ class _ContactAboutScreenState extends State<ContactAboutScreen> {
         subject: subject,
         message: message,
       );
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Message sent. Thank you!')),
       );
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

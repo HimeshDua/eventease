@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
-import '../../widgets/common.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -34,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await context.read<AuthService>().register(
         name: _name.text.trim(),
@@ -42,14 +42,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _password.text,
         wantsOrganizer: _wantsOrganizer,
       );
-      if (mounted) showSnack(context, 'Registration successful!', error: false);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Registration successful!')),
+      );
       Navigator.pop(context);
     } catch (e) {
-      // ADD THIS LINE to see the exact issue in your terminal logs:
-      print("REGISTRATION ACTUAL ERROR: $e");
-
-      if (mounted)
-        showSnack(context, AuthService.friendlyError(e), error: true);
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(AuthService.friendlyError(e)),
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -76,18 +82,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _email,
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => (v == null || !v.contains('@'))
-                    ? 'Enter a valid email'
-                    : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Email is required';
+                  }
+                  final trimmed = v.trim();
+                  if (!trimmed.contains('@')) {
+                    return 'Enter a valid email';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phone,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
                 keyboardType: TextInputType.phone,
-                validator: (v) => (v == null || v.trim().length < 7)
-                    ? 'Enter a valid phone'
-                    : null,
+                validator: (v) {
+                  final trimmed = v?.trim() ?? '';
+                  if (trimmed.length < 7) {
+                    return 'Enter a valid phone number';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -108,8 +125,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 obscureText: _obscurePassword,
-                validator: (v) =>
-                    (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+                validator: (v) {
+                  if (v == null || v.isEmpty) {
+                    return 'Password is required';
+                  }
+                  if (v.length < 6) {
+                    return 'Minimum 6 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -118,8 +142,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Confirm password',
                 ),
                 obscureText: _obscurePassword,
-                validator: (value) =>
-                    value != _password.text ? 'Passwords do not match' : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your password';
+                  }
+                  if (value != _password.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 8),
               SwitchListTile(

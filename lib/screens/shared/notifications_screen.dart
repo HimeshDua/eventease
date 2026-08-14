@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_notification.dart';
-import '../../models/app_user.dart';
 import '../../repositories/event_repository.dart';
 import '../../repositories/misc_repositories.dart';
 import '../../services/auth_service.dart';

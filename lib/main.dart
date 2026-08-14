@@ -15,7 +15,6 @@ import 'services/storage_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/blocked_account_screen.dart';
 import 'screens/shell.dart';
-import 'screens/shared/splash_screen.dart';
 import 'services/auth_service.dart';
 import 'widgets/common.dart';
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
-import '../../widgets/common.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -28,25 +27,33 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await context.read<AuthService>().login(
         _email.text.trim().toLowerCase(),
         _password.text,
       );
-
-      print("Login successful");
-      showSnack(context, 'Login successful!', error: false);
-      // AuthGate rebuilds automatically via userStream.
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Login successful!')));
     } catch (e) {
-      if (mounted) showSnack(context, e.toString(), error: true);
-      showSnack(context, AuthService.friendlyError(e), error: true);
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(AuthService.friendlyError(e)),
+            backgroundColor: colorScheme.errorContainer,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _forgotPassword() async {
+    if (!mounted) return;
     final controller = TextEditingController(text: _email.text.trim());
+    // ignore: use_build_context_synchronously
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -72,17 +79,28 @@ class _LoginScreenState extends State<LoginScreen> {
     controller.dispose();
     if (email == null || email.isEmpty) return;
     final auth = context.read<AuthService>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await auth.resetPassword(email);
-      if (mounted) showSnack(context, 'Password reset email sent.');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Password reset email sent.')),
+      );
     } catch (error) {
-      if (mounted)
-        showSnack(context, AuthService.friendlyError(error), error: true);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AuthService.friendlyError(error)),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -95,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Icon(
                   Icons.event_available,
                   size: 72,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: colorScheme.primary,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -108,9 +126,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _email,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => (v == null || !v.contains('@'))
-                      ? 'Enter a valid email'
-                      : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Email is required';
+                    }
+                    final trimmed = v.trim();
+                    if (!trimmed.contains('@')) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -131,9 +156,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  validator: (v) => (v == null || v.length < 6)
-                      ? 'Minimum 6 characters'
-                      : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) {
+                      return 'Password is required';
+                    }
+                    if (v.length < 6) {
+                      return 'Minimum 6 characters';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 FilledButton(

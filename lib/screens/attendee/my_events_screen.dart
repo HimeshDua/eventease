@@ -170,23 +170,27 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
   }
 
   Future<void> _cancelRegistration(BuildContext context, _Joined item) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final registrations = context.read<RegistrationRepository>();
     final confirmed = await confirm(
       context,
       'Cancel registration?',
       'Your seat will be released. This cannot be undone.',
     );
     if (!confirmed) return;
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<RegistrationRepository>().cancel(item.reg);
+      await registrations.cancel(item.reg);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Registration cancelled.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     }

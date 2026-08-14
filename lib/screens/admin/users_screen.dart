@@ -111,25 +111,29 @@ class _UserCardState extends State<_UserCard> {
 
   Future<void> _setRole(String role) async {
     final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final users = context.read<UserRepository>();
+    final notifications = context.read<NotificationRepository>();
     try {
-      final users = context.read<UserRepository>();
       await users.setRole(widget.user.id, role);
       if (role == Roles.organizer) {
-        await context.read<NotificationRepository>().send(
+        await notifications.send(
           userId: widget.user.id,
           type: NotificationTypes.roleApproved,
           title: 'Organizer access approved',
           message: 'You can now create and manage events.',
         );
       }
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('Role updated to ${_roleLabel(role)}.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     }
@@ -138,6 +142,7 @@ class _UserCardState extends State<_UserCard> {
   Future<void> _toggleActive() async {
     final user = widget.user;
     final currentAdmin = context.read<AuthService>().currentUser;
+    final users = context.read<UserRepository>();
     if (user.id == currentAdmin?.id && user.active) {
       showSnack(
         context,
@@ -147,6 +152,8 @@ class _UserCardState extends State<_UserCard> {
       return;
     }
     final newActive = !user.active;
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final confirmed = await confirm(
       context,
       newActive ? 'Activate account?' : 'Deactivate account?',
@@ -156,9 +163,9 @@ class _UserCardState extends State<_UserCard> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<UserRepository>().setActive(user.id, newActive);
+      await users.setActive(user.id, newActive);
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -167,10 +174,11 @@ class _UserCardState extends State<_UserCard> {
         ),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

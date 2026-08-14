@@ -3,7 +3,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../../repositories/registration_repository.dart';
-import '../../widgets/common.dart';
 
 /// QR check-in scanner with guarded states (SRS 1.6.10).
 class ScannerScreen extends StatefulWidget {
@@ -38,7 +37,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
       );
       return;
     }
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final registration = await context
           .read<RegistrationRepository>()

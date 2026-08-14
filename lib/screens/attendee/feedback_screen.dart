@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
-import '../../models/app_user.dart';
 import '../../models/event.dart';
 import '../../models/event_feedback.dart';
 import '../../models/registration.dart';
@@ -46,6 +45,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final feedback = EventFeedback(
       id: '${user.id}_${widget.eventId}',
       eventId: widget.eventId,
@@ -55,15 +55,17 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     );
     try {
       await context.read<FeedbackRepository>().submit(feedback);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Thank you for your feedback!')),
       );
       navigator.pop();
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

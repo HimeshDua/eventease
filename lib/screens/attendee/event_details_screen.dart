@@ -271,6 +271,7 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
     final messenger = ScaffoldMessenger.of(context);
     final registrations = context.read<RegistrationRepository>();
     final notifications = context.read<NotificationRepository>();
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       final registration = await registrations.register(
         widget.event.id,
@@ -293,10 +294,11 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
         ),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -307,6 +309,9 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
   Future<void> _cancel() async {
     final reg = widget.registration;
     if (reg == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final registrations = context.read<RegistrationRepository>();
     final confirmed = await confirm(
       context,
       'Cancel registration?',
@@ -314,23 +319,20 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<RegistrationRepository>().cancel(reg);
-      if (messenger.mounted) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Registration cancelled.')),
-        );
-      }
+      await registrations.cancel(reg);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Registration cancelled.')),
+      );
     } catch (error) {
-      if (messenger.mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('$error'),
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-          ),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('$error'),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -465,7 +467,7 @@ class _GalleryPreview extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final item = items[index];
               return ClipRRect(

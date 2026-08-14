@@ -68,8 +68,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> changePassword(String newPassword) async {
     final user = _auth.currentUser;
-    if (user == null)
+    if (user == null) {
       throw Exception('Please sign in again to change your password.');
+    }
     await user.updatePassword(newPassword);
   }
 

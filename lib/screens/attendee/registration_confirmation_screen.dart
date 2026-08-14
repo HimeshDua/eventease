@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../models/registration.dart';
-import '../../widgets/common.dart';
 import 'qr_pass_screen.dart';
 
 /// Shown right after a successful registration (SRS 1.6.6).

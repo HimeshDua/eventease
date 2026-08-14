@@ -112,6 +112,10 @@ class _PendingEventCardState extends State<_PendingEventCard> {
   bool _busy = false;
 
   Future<void> _approve() async {
+    final events = context.read<EventRepository>();
+    final notifications = context.read<NotificationRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final confirmed = await confirm(
       context,
       'Approve event?',
@@ -119,13 +123,12 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<EventRepository>().setStatus(
+      await events.setStatus(
         widget.event.id,
         EventStatus.approved,
       );
-      await context.read<NotificationRepository>().send(
+      await notifications.send(
         userId: widget.event.organizerId,
         eventId: widget.event.id,
         type: NotificationTypes.approval,
@@ -133,12 +136,14 @@ class _PendingEventCardState extends State<_PendingEventCard> {
         message: '${widget.event.title} has been approved.',
       );
       widget.onApproved();
+      if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event approved.')));
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -147,6 +152,10 @@ class _PendingEventCardState extends State<_PendingEventCard> {
   }
 
   Future<void> _reject() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final events = context.read<EventRepository>();
+    final notifications = context.read<NotificationRepository>();
     final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
@@ -175,13 +184,12 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     controller.dispose();
     if (reason == null) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<EventRepository>().setStatus(
+      await events.setStatus(
         widget.event.id,
         EventStatus.rejected,
       );
-      await context.read<NotificationRepository>().send(
+      await notifications.send(
         userId: widget.event.organizerId,
         eventId: widget.event.id,
         type: NotificationTypes.rejection,
@@ -190,12 +198,14 @@ class _PendingEventCardState extends State<_PendingEventCard> {
             ? '${widget.event.title} was not approved.'
             : '${widget.event.title} was not approved. Reason: $reason',
       );
+      if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event rejected.')));
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -275,6 +285,10 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
   bool _busy = false;
 
   Future<void> _approve() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final events = context.read<EventRepository>();
+    final notifications = context.read<NotificationRepository>();
     final confirmed = await confirm(
       context,
       'Approve cancellation?',
@@ -282,10 +296,7 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      final events = context.read<EventRepository>();
-      final notifications = context.read<NotificationRepository>();
       await events.approveCancellation(widget.event.id);
       await notifications.sendToEventRegistrants(
         eventId: widget.event.id,
@@ -293,14 +304,16 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
         title: 'Event cancelled',
         message: '${widget.event.title} has been cancelled.',
       );
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation approved.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -309,6 +322,9 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
   }
 
   Future<void> _reject() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final events = context.read<EventRepository>();
     final confirmed = await confirm(
       context,
       'Reject cancellation request?',
@@ -316,17 +332,18 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
     );
     if (!confirmed) return;
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<EventRepository>().rejectCancellation(widget.event.id);
+      await events.rejectCancellation(widget.event.id);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation request rejected.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {

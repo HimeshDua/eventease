@@ -33,17 +33,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _uploadAvatar(AppUser user) async {
-    final picker = ImagePicker();
     final messenger = ScaffoldMessenger.of(context);
+    final storage = context.read<StorageService>();
+    final users = context.read<UserRepository>();
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 80,
+    );
+    if (file == null) return;
     try {
-      final file = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        imageQuality: 80,
-      );
-      if (file == null) return;
-      final storage = context.read<StorageService>();
-      final users = context.read<UserRepository>();
       final url = await storage.uploadImage(
         file,
         'profiles/${user.id}/avatar.jpg',
@@ -54,10 +54,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         phone: _phone.text.trim().isEmpty ? user.phone : _phone.text.trim(),
         profileImageUrl: url,
       );
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Profile picture updated.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
@@ -76,18 +78,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await context.read<UserRepository>().updateProfile(
         user.id,
         name: name,
         phone: phone,
       );
+      if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Profile updated.')));
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     } finally {
@@ -96,6 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _changePassword() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final auth = context.read<AuthService>();
     final controller = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -125,24 +133,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newPassword = controller.text;
     controller.dispose();
     if (newPassword.length < 6) {
-      showSnack(
-        context,
-        'Password must be at least 6 characters.',
-        error: true,
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Password must be at least 6 characters.'),
+          backgroundColor: colorScheme.errorContainer,
+        ),
       );
       return;
     }
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<AuthService>().changePassword(newPassword);
+      await auth.changePassword(newPassword);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Password changed.')),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(AuthService.friendlyError(error)),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     }
@@ -153,16 +164,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AppUser user,
     bool enabled,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await users.setRemindersEnabled(user.id, enabled);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remindersEnabled', enabled);
     } catch (_) {
       if (mounted) {
-        showSnack(
-          context,
-          'We could not save your preference. Please try again.',
-          error: true,
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text(
+              'We could not save your preference. Please try again.',
+            ),
+            backgroundColor: colorScheme.errorContainer,
+          ),
         );
       }
     }
@@ -170,8 +186,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _requestOrganizer(UserRepository users, AppUser user) async {
     final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await users.requestOrganizerAccess(user.id);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
@@ -180,10 +198,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text('$error'),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          backgroundColor: colorScheme.errorContainer,
         ),
       );
     }
