@@ -1,16 +1,16 @@
 # EventEase Progress
 
 - [x] M00 REPOSITORY_BASELINE — complete
-- [~] M01 DEPENDENCIES_AND_THEME — in progress
+- [x] M01 DEPENDENCIES_AND_THEME — complete
 - [x] M02 FIREBASE_BOOTSTRAP_GATE — complete
-- [~] M03 APP_BOOTSTRAP_AND_SHARED_UI — in progress
-- [~] M04 DOMAIN_MODELS — in progress
-- [~] M05 AUTHENTICATION_AND_PROFILE_DATA — in progress
-- [~] M06 EVENT_REGISTRATION_REPOSITORIES — in progress
-- [~] M07 ENGAGEMENT_STORAGE_MAP_REPOSITORIES — in progress
-- [~] M08 FIRESTORE_AND_STORAGE_SECURITY — in progress
-- [~] M09 AUTHENTICATION_SCREENS — in progress
-- [~] M10 ROLE_ADAPTIVE_SHELL — in progress
+- [x] M03 APP_BOOTSTRAP_AND_SHARED_UI — complete
+- [x] M04 DOMAIN_MODELS — complete
+- [x] M05 AUTHENTICATION_AND_PROFILE_DATA — complete
+- [x] M06 EVENT_REGISTRATION_REPOSITORIES — complete
+- [x] M07 ENGAGEMENT_STORAGE_MAP_REPOSITORIES — complete
+- [x] M08 FIRESTORE_AND_STORAGE_SECURITY — complete
+- [x] M09 AUTHENTICATION_SCREENS — complete
+- [~] M10 ROLE_ADAPTIVE_SHELL — in progress (destination routing via stubs pending feature screens)
 - [ ] M11 ATTENDEE_HOME_DASHBOARD — incomplete
 - [ ] M12 DISCOVERY_AND_FILTERS — incomplete
 - [ ] M13 EVENT_DETAILS_MAP_REGISTRATION — incomplete

@@ -94,6 +94,30 @@ Future<bool> confirm(BuildContext context, String title, String body) async {
 String formatEventDate(DateTime d) =>
     DateFormat('EEE, d MMM yyyy • h:mm a').format(d);
 
+/// Shared status chip for event lifecycle states (SRS 1.6.3).
+class StatusBadge extends StatelessWidget {
+  final String status;
+  const StatusBadge({super.key, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (label, color) = switch (status) {
+      'approved' => ('Approved', colorScheme.primary),
+      'pending' => ('Pending approval', colorScheme.secondary),
+      'rejected' => ('Rejected', colorScheme.error),
+      'cancelled' => ('Cancelled', colorScheme.error),
+      'completed' => ('Completed', colorScheme.tertiary),
+      _ => (status, colorScheme.outline),
+    };
+    return Chip(
+      label: Text(label),
+      labelStyle: TextStyle(color: color),
+      side: BorderSide(color: color),
+    );
+  }
+}
+
 /// Standard event card used on Discover, Favorites, My Events (SRS 1.6.3).
 class EventCard extends StatelessWidget {
   final Event event;

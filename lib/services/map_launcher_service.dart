@@ -2,14 +2,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Opens external Google Maps directions for an event location.
 class MapLauncherService {
-  Uri googleDirectionsUri(double latitude, double longitude) => Uri.https(
-        'www.google.com',
-        '/maps/dir/',
-        <String, String>{
-          'api': '1',
-          'destination': '$latitude,$longitude',
-        },
-      );
+  Uri googleDirectionsUri(double latitude, double longitude) =>
+      Uri.https('www.google.com', '/maps/dir/', <String, String>{
+        'api': '1',
+        'destination': '$latitude,$longitude',
+        'dir_action': 'navigate',
+      });
 
   Future<void> openGoogleDirections(double latitude, double longitude) async {
     try {
