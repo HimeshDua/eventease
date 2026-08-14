@@ -14,6 +14,8 @@ import '../../repositories/registration_repository.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
 import '../../widgets/event_map.dart';
+import '../shared/gallery_screen.dart';
+import 'feedback_screen.dart';
 import 'registration_confirmation_screen.dart';
 
 /// Full event details: map, favorites, registration, gallery preview (SRS 1.6.5/1.6.6).
@@ -206,7 +208,24 @@ class _EventBody extends StatelessWidget {
               ),
               if (event.isCompleted) ...[
                 const SizedBox(height: 24),
-                Text('Gallery', style: Theme.of(context).textTheme.titleMedium),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Gallery',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GalleryScreen(eventId: event.id),
+                        ),
+                      ),
+                      child: const Text('See all'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 _GalleryPreview(eventId: event.id),
               ],
@@ -429,6 +448,21 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
               FilledButton(
                 onPressed: _busy ? null : _register,
                 child: const Text('Register again'),
+              ),
+            ],
+            if (reg.status == RegistrationStatus.attended &&
+                widget.event.isCompleted) ...[
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        FeedbackScreen(eventId: widget.event.id),
+                  ),
+                ),
+                icon: const Icon(Icons.rate_review_outlined),
+                label: const Text('Write feedback'),
               ),
             ],
           ],

@@ -11,6 +11,7 @@ import '../../repositories/registration_repository.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
 import 'event_details_screen.dart';
+import 'feedback_screen.dart';
 import 'qr_pass_screen.dart';
 
 /// Attendee's registered events with QR passes (SRS 1.6.7, 1.6.10).
@@ -89,6 +90,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                           items: joined.where((j) => j.isCompleted).toList(),
                           onOpen: (j) => _openDetails(context, j.event),
                           onQr: (j) => _openQr(context, j),
+                          onFeedback: (j) => _openFeedback(context, j),
                         ),
                         _JoinedList(
                           title: 'Cancelled registrations',
@@ -169,6 +171,15 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     );
   }
 
+  void _openFeedback(BuildContext context, _Joined item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FeedbackScreen(eventId: item.event.id),
+      ),
+    );
+  }
+
   Future<void> _cancelRegistration(BuildContext context, _Joined item) async {
     final messenger = ScaffoldMessenger.of(context);
     final colorScheme = Theme.of(context).colorScheme;
@@ -222,6 +233,7 @@ class _JoinedList extends StatelessWidget {
   final ValueChanged<_Joined> onOpen;
   final ValueChanged<_Joined>? onQr;
   final ValueChanged<_Joined>? onCancel;
+  final ValueChanged<_Joined>? onFeedback;
 
   const _JoinedList({
     required this.title,
@@ -230,6 +242,7 @@ class _JoinedList extends StatelessWidget {
     required this.onOpen,
     this.onQr,
     this.onCancel,
+    this.onFeedback,
   });
 
   @override
@@ -275,13 +288,20 @@ class _JoinedList extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'View QR pass',
-                    onPressed: item.reg.status == RegistrationStatus.cancelled
-                        ? null
-                        : () => onQr?.call(item),
-                    icon: const Icon(Icons.qr_code_2),
-                  ),
+                   IconButton(
+                     tooltip: 'View QR pass',
+                     onPressed: item.reg.status == RegistrationStatus.cancelled
+                         ? null
+                         : () => onQr?.call(item),
+                     icon: const Icon(Icons.qr_code_2),
+                   ),
+                   if (onFeedback != null &&
+                       item.reg.status == RegistrationStatus.attended)
+                     IconButton(
+                       tooltip: 'Write feedback',
+                       onPressed: () => onFeedback!.call(item),
+                       icon: const Icon(Icons.rate_review_outlined),
+                     ),
                   if (onCancel != null)
                     IconButton(
                       tooltip: 'Cancel registration',

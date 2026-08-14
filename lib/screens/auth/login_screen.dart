@@ -51,9 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _forgotPassword() async {
-    if (!mounted) return;
+    final auth = context.read<AuthService>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final controller = TextEditingController(text: _email.text.trim());
-    // ignore: use_build_context_synchronously
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -78,9 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     controller.dispose();
     if (email == null || email.isEmpty) return;
-    final auth = context.read<AuthService>();
-    final messenger = ScaffoldMessenger.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
     try {
       await auth.resetPassword(email);
       if (!mounted) return;

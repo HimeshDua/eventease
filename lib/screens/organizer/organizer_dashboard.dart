@@ -6,6 +6,7 @@ import '../../repositories/event_repository.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
 import 'event_form_screen.dart';
+import 'organizer_event_details_screen.dart';
 
 /// Organizer's owned events with status and participant counts (SRS 1.6.11).
 class OrganizerDashboard extends StatelessWidget {
@@ -77,7 +78,8 @@ class OrganizerDashboard extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => EventFormScreen(eventId: event.id),
+                        builder: (_) =>
+                            OrganizerEventDetailsScreen(eventId: event.id),
                       ),
                     ),
                   );

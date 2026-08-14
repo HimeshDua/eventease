@@ -334,7 +334,7 @@ class _SectionHeader extends StatelessWidget {
       Expanded(
         child: Text(title, style: Theme.of(context).textTheme.titleMedium),
       ),
-      if (trailing != null) trailing!,
+      ...[trailing].whereType<Widget>(),
       if (onSeeAll != null)
         TextButton(onPressed: onSeeAll, child: const Text('See all')),
     ];

@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../../models/app_notification.dart';
 import '../../repositories/misc_repositories.dart';
 import '../../widgets/common.dart';
+import '../attendee/feedback_screen.dart';
+import '../attendee/my_events_screen.dart';
+import '../attendee/event_details_screen.dart';
 
 /// Full notification view; marks the item read when opened (SRS 1.6.9).
 class NotificationDetailsScreen extends StatefulWidget {
@@ -70,9 +73,74 @@ class _NotificationDetailsScreenState extends State<NotificationDetailsScreen> {
               notification.message,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
+            if (_actionFor(context, notification) != null) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () =>
+                      _actionFor(context, notification)!.action(context),
+                  icon: Icon(_actionFor(context, notification)!.icon),
+                  label: Text(_actionFor(context, notification)!.label),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+}
+
+class _NotificationAction {
+  final IconData icon;
+  final String label;
+  final void Function(BuildContext) action;
+  const _NotificationAction(this.icon, this.label, this.action);
+}
+
+_NotificationAction? _actionFor(
+  BuildContext context,
+  AppNotification notification,
+) {
+  final eventId = notification.eventId;
+  if (eventId == null || eventId.isEmpty) return null;
+  switch (notification.type) {
+    case NotificationTypes.feedbackRequest:
+      return _NotificationAction(
+        Icons.rate_review_outlined,
+        'Write feedback',
+        (context) => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FeedbackScreen(eventId: eventId),
+          ),
+        ),
+      );
+    case NotificationTypes.registration:
+    case NotificationTypes.announcement:
+    case NotificationTypes.eventChanged:
+    case NotificationTypes.cancelled:
+      return _NotificationAction(
+        Icons.event_outlined,
+        'View event',
+        (context) => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EventDetailsScreen(eventId: eventId),
+          ),
+        ),
+      );
+    case NotificationTypes.reminder:
+      return _NotificationAction(
+        Icons.event_available_outlined,
+        'Open My Events',
+        (context) => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MyEventsScreen()),
+        ),
+      );
+    default:
+      return null;
   }
 }
