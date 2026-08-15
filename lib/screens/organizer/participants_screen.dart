@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
-import '../../models/app_user.dart';
 import '../../models/registration.dart';
-import '../../repositories/misc_repositories.dart';
 import '../../repositories/registration_repository.dart';
 import '../../widgets/common.dart';
 
@@ -16,7 +14,6 @@ class ParticipantsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final registrations = context.read<RegistrationRepository>();
-    final users = context.read<UserRepository>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Participants')),
@@ -36,56 +33,49 @@ class ParticipantsScreen extends StatelessWidget {
               icon: Icons.group_outlined,
             );
           }
-          return StreamBuilder<List<AppUser>>(
-            stream: users.all(),
-            builder: (context, userSnapshot) {
-              final userMap = <String, AppUser>{
-                for (final user in userSnapshot.data ?? const <AppUser>[])
-                  user.id: user,
-              };
-              final registered = regs.where(
-                (r) => r.status == RegistrationStatus.registered,
-              );
-              final attended = regs.where(
-                (r) => r.status == RegistrationStatus.attended,
-              );
-              final cancelled = regs.where(
-                (r) => r.status == RegistrationStatus.cancelled,
-              );
+          final registered = regs.where(
+            (r) => r.status == RegistrationStatus.registered,
+          );
+          final attended = regs.where(
+            (r) => r.status == RegistrationStatus.attended,
+          );
+          final cancelled = regs.where(
+            (r) => r.status == RegistrationStatus.cancelled,
+          );
 
-              return ListView(
-                padding: const EdgeInsets.all(16),
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Wrap(
+                spacing: 8,
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      Chip(label: Text('${registered.length} registered')),
-                      Chip(label: Text('${attended.length} attended')),
-                      Chip(label: Text('${cancelled.length} cancelled')),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  for (final reg in regs)
-                    Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Text(
-                            _initials(userMap[reg.userId]?.name ?? '?'),
-                          ),
-                        ),
-                        title: Text(userMap[reg.userId]?.name ?? 'User'),
-                        subtitle: Text(
-                          userMap[reg.userId]?.email ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: _RegistrationStatusChip(status: reg.status),
+                  Chip(label: Text('${registered.length} registered')),
+                  Chip(label: Text('${attended.length} attended')),
+                  Chip(label: Text('${cancelled.length} cancelled')),
+                ],
+              ),
+              const SizedBox(height: 16),
+              for (final reg in regs)
+                Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      child: Text(
+                        _initials(reg.participantName),
                       ),
                     ),
-                ],
-              );
-            },
+                    title: Text(reg.participantName.isNotEmpty
+                        ? reg.participantName
+                        : 'User'),
+                    subtitle: Text(
+                      reg.participantEmail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: _RegistrationStatusChip(status: reg.status),
+                  ),
+                ),
+            ],
           );
         },
       ),

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,15 +25,18 @@ class RegistrationRepository {
     _requireCurrentUser(userId);
     final registrationRef = _regs.doc(_registrationId(eventId, userId));
     final eventRef = _db.collection(Col.events).doc(eventId);
+    final userRef = _db.collection(Col.users).doc(userId);
     final qrCode = const Uuid().v4();
 
     await _db.runTransaction((transaction) async {
       final snapshots = await Future.wait([
         transaction.get(eventRef),
         transaction.get(registrationRef),
+        transaction.get(userRef),
       ]);
       final eventSnapshot = snapshots[0];
       final registrationSnapshot = snapshots[1];
+      final userSnapshot = snapshots[2];
       if (!eventSnapshot.exists) {
         throw StateError('Event not found.');
       }
@@ -49,6 +52,13 @@ class RegistrationRepository {
         throw StateError('This event is full.');
       }
 
+      final userName = userSnapshot.exists
+          ? (userSnapshot.data() as Map<String, dynamic>)['name'] ?? ''
+          : '';
+      final userEmail = userSnapshot.exists
+          ? (userSnapshot.data() as Map<String, dynamic>)['email'] ?? ''
+          : '';
+
       if (registrationSnapshot.exists) {
         final registration = Registration.fromDoc(registrationSnapshot);
         if (registration.status == RegistrationStatus.registered ||
@@ -60,6 +70,8 @@ class RegistrationRepository {
           'qrCode': qrCode,
           'registeredAt': FieldValue.serverTimestamp(),
           'checkedInAt': null,
+          'participantName': userName,
+          'participantEmail': userEmail,
         });
       } else {
         transaction.set(registrationRef, {
@@ -69,6 +81,8 @@ class RegistrationRepository {
           'qrCode': qrCode,
           'registeredAt': FieldValue.serverTimestamp(),
           'checkedInAt': null,
+          'participantName': userName,
+          'participantEmail': userEmail,
         });
       }
       transaction.update(eventRef, {

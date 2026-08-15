@@ -70,7 +70,12 @@ service cloud.firestore {
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || ownsEvent(resource.data.eventId));
+      allow read: if signedIn() && (
+        resource.data == null
+        || resource.data.userId == request.auth.uid
+        || isAdmin()
+        || ownsEvent(resource.data.eventId)
+      );
       allow create: if (isAdmin() || ownsEvent(request.resource.data.eventId))
         && attendanceId == request.resource.data.userId + '_' + request.resource.data.eventId;
       allow update, delete: if isAdmin();

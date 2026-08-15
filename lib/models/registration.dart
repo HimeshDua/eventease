@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Registration {
   final String id;
@@ -8,6 +8,8 @@ class Registration {
   final String qrCode; // unique string encoded in the QR pass
   final DateTime? registeredAt;
   final DateTime? checkedInAt;
+  final String participantName;
+  final String participantEmail;
 
   const Registration({
     required this.id,
@@ -17,6 +19,8 @@ class Registration {
     required this.qrCode,
     this.registeredAt,
     this.checkedInAt,
+    this.participantName = '',
+    this.participantEmail = '',
   });
 
   factory Registration.fromDoc(DocumentSnapshot doc) {
@@ -29,6 +33,8 @@ class Registration {
       qrCode: d['qrCode'] ?? '',
       registeredAt: (d['registeredAt'] as Timestamp?)?.toDate(),
       checkedInAt: (d['checkedInAt'] as Timestamp?)?.toDate(),
+      participantName: d['participantName'] ?? '',
+      participantEmail: d['participantEmail'] ?? '',
     );
   }
 
@@ -42,5 +48,7 @@ class Registration {
             : Timestamp.fromDate(registeredAt!),
         'checkedInAt':
             checkedInAt == null ? null : Timestamp.fromDate(checkedInAt!),
+        'participantName': participantName,
+        'participantEmail': participantEmail,
       };
 }
