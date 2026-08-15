@@ -128,11 +128,12 @@ class _UserCardState extends State<_UserCard> {
       messenger.showSnackBar(
         SnackBar(content: Text('Role updated to ${_roleLabel(role)}.')),
       );
+    // setRole: Firestore write denial (only admin can change roles)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -173,11 +174,12 @@ class _UserCardState extends State<_UserCard> {
           ),
         ),
       );
+    // toggleActive: Firestore write denial or cannot deactivate self
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

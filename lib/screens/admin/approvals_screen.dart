@@ -138,11 +138,12 @@ class _PendingEventCardState extends State<_PendingEventCard> {
       widget.onApproved();
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event approved.')));
+    // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -200,11 +201,12 @@ class _PendingEventCardState extends State<_PendingEventCard> {
       );
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event rejected.')));
+    // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -308,11 +310,12 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation approved.')),
       );
+    // Approve/reject cancellations: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -338,11 +341,12 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation request rejected.')),
       );
+    // Approve/reject cancellations: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

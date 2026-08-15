@@ -196,11 +196,12 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Registration cancelled.')),
       );
+    // registration cancellation failed (network error, event already started)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

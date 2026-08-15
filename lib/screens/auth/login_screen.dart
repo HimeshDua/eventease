@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
+import '../../widgets/common.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,11 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Login successful!')));
+    // Auth failures such as invalid credentials, network issues, or too-many-requests.
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(AuthService.friendlyError(e)),
+            content: Text(friendlyError(e)),
             backgroundColor: colorScheme.errorContainer,
           ),
         );
@@ -85,11 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Password reset email sent.')),
       );
+    // Reset errors include unknown email and network failures.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(AuthService.friendlyError(error)),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

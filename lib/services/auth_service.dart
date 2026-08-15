@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/constants.dart';
+import '../core/errors.dart' as errors;
 import '../models/app_user.dart';
 
 /// Handles Firebase Auth + the matching Firestore user profile.
@@ -75,27 +76,9 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Turns FirebaseAuth exceptions into user-friendly messages (SRS 1.6.1).
-  static String friendlyError(Object e) {
-    if (e is FirebaseAuthException) {
-      switch (e.code) {
-        case 'invalid-credential':
-        case 'wrong-password':
-        case 'user-not-found':
-          return 'Invalid email or password.';
-        case 'email-already-in-use':
-          return 'An account with this email already exists.';
-        case 'weak-password':
-          return 'Password is too weak (minimum 6 characters).';
-        case 'invalid-email':
-          return 'Please enter a valid email address.';
-        case 'network-request-failed':
-          return 'A network connection is required. Please try again.';
-        case 'requires-recent-login':
-          return 'Please sign in again before changing your password.';
-        default:
-          return e.message ?? 'Authentication failed.';
-      }
-    }
-    return 'Something went wrong. Please try again.';
-  }
+  ///
+  /// Delegates to the centralized [friendlyError] handler in
+  /// `lib/core/errors.dart` so the error-mapping logic lives in one place.
+  // Delegates to the centralized error handler in lib/core/errors.dart.
+  static String friendlyError(Object e) => errors.friendlyError(e);
 }

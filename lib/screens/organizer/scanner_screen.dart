@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../../repositories/registration_repository.dart';
+import '../../widgets/common.dart';
 
 /// QR check-in scanner with guarded states (SRS 1.6.10).
 class ScannerScreen extends StatefulWidget {
@@ -45,8 +46,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
         'Check-in successful for registration ${registration.id}.',
         isError: false,
       );
+    // check-in failed (invalid QR, wrong event, already checked in, cancelled pass, network error)
     } catch (error) {
-      _showResult('$error', isError: true);
+      _showResult(friendlyError(error), isError: true);
     }
   }
 

@@ -55,11 +55,12 @@ class _ContactAboutScreenState extends State<ContactAboutScreen> {
         const SnackBar(content: Text('Message sent. Thank you!')),
       );
       navigator.pop();
+    // Common errors: network failure, Firestore write denial.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

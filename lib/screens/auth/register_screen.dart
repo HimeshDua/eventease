@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
+import '../../widgets/common.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -47,11 +48,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SnackBar(content: Text('Registration successful!')),
       );
       Navigator.pop(context);
+    // Registration failures include email-already-in-use, weak password, and network issues.
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(AuthService.friendlyError(e)),
+            content: Text(friendlyError(e)),
             backgroundColor: Theme.of(context).colorScheme.errorContainer,
           ),
         );

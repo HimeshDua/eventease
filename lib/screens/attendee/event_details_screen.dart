@@ -312,11 +312,12 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
           ),
         ),
       );
+    // event not found, event is full, already registered, event started, network error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -344,11 +345,12 @@ class _RegistrationAreaState extends State<_RegistrationArea> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Registration cancelled.')),
       );
+    // registration already cancelled, event started, network error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

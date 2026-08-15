@@ -60,11 +60,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         const SnackBar(content: Text('Thank you for your feedback!')),
       );
       navigator.pop();
+    // feedback submission failed (not attended, duplicate, network error)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

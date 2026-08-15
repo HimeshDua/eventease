@@ -58,11 +58,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Profile picture updated.')),
       );
+    // Common errors: storage permission denied, upload failure.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: Theme.of(context).colorScheme.errorContainer,
         ),
       );
@@ -87,11 +88,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Profile updated.')));
+    // Common errors: Firestore permission denied or network error.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -148,11 +150,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Password changed.')),
       );
+    // Common errors: requires-recent-login, network failure.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(AuthService.friendlyError(error)),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -197,11 +200,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       );
+    // Common errors: Firestore write denial.
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

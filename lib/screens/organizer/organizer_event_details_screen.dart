@@ -314,11 +314,12 @@ class _Body extends StatelessWidget {
         );
       }
       navigator.pop();
+    // cancellation request failed (not owned, already requested, network error)
     } catch (error) {
       if (context.mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('$error'),
+            content: Text(friendlyError(error)),
             backgroundColor: colorScheme.errorContainer,
           ),
         );

@@ -391,11 +391,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
         ),
       );
       navigator.pop();
+    // event creation/edit failed (image upload failure, Firestore denial, invalid state)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

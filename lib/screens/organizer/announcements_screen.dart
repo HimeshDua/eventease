@@ -51,11 +51,12 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
         const SnackBar(content: Text('Announcement sent to participants.')),
       );
       navigator.pop();
+    // announcement delivery failed (network error, no registrants)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 /// Shared, user-facing fallback shown when an error cannot be translated into a
 /// friendlier message.
@@ -14,7 +13,7 @@ const String friendlyErrorFallback = 'Something went wrong. Please try again.';
 ///
 /// Centralizing the translation keeps error wording consistent across the app and
 /// ensures users never see raw stack traces or internal exception names
-/// (SRS 1.6.1 � friendly error messaging). Screens and repositories should call
+/// (SRS 1.6.1 â€” friendly error messaging). Screens and repositories should call
 /// `friendlyError(e)` inside a `catch` block instead of surfacing `e` directly:
 ///
 /// ```dart
@@ -28,26 +27,26 @@ const String friendlyErrorFallback = 'Something went wrong. Please try again.';
 /// The type checks are deliberately ordered so that more specific subtypes are
 /// matched before their supertypes:
 ///
-/// 1. [FirebaseAuthException] � authentication failures. Checked *before*
+/// 1. [FirebaseAuthException] â€” authentication failures. Checked *before*
 ///    [FirebaseException] because `FirebaseAuthException extends FirebaseException`;
 ///    matching it second would swallow auth-specific codes such as
 ///    `wrong-password` and `email-already-in-use`. Common situations: invalid
 ///    credentials on login, an already-in-use email at registration, weak
 ///    passwords, `user-disabled` accounts, and `too-many-requests` after
 ///    repeated failed sign-in attempts.
-/// 2. [FirebaseException] � Firestore reads/writes, Firebase Storage uploads and
+/// 2. [FirebaseException] â€” Firestore reads/writes, Firebase Storage uploads and
 ///    deletes, and other service failures. Common situations:
 ///    `permission-denied` (a security rule or role guard rejecting the user),
 ///    `unavailable` during backend maintenance, `deadline-exceeded` under poor
 ///    connectivity, and `resource-exhausted` for quota hits.
-/// 3. [StateError] � repository business-rule violations. Repositories throw these
+/// 3. [StateError] â€” repository business-rule violations. Repositories throw these
 ///    with a message already written to be human-readable (e.g. `'Event not found.'`,
 ///    `'This event is full.'`), so the message is returned as-is.
-/// 4. [Exception] � plain `Exception('readable message')` objects thrown by
+/// 4. [Exception] â€” plain `Exception('readable message')` objects thrown by
 ///    services and repositories (including the existing `StorageService` wrapper
 ///    pattern). The `Exception: ` prefix produced by [Object.toString] is stripped
 ///    so only the authored message is shown.
-/// 5. Anything else � returns [friendlyErrorFallback].
+/// 5. Anything else â€” returns [friendlyErrorFallback].
 String friendlyError(Object e) {
   // Auth errors must be tested first: FirebaseAuthException extends
   // FirebaseException, so a generic Firebase check would otherwise swallow them.
@@ -100,7 +99,7 @@ String friendlyError(Object e) {
 
   // Repository business-rule violations (message is already human-readable).
   if (e is StateError) {
-    return e.message ?? friendlyErrorFallback;
+    return e.message;
   }
 
   // Wrapped service/repo errors: strip the 'Exception: ' prefix from toString().
@@ -109,6 +108,6 @@ String friendlyError(Object e) {
     return message.isEmpty ? friendlyErrorFallback : message;
   }
 
-  // Unknown error type � last resort.
+  // Unknown error type â€” last resort.
   return friendlyErrorFallback;
 }

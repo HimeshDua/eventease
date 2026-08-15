@@ -297,11 +297,12 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
       );
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event cancelled.')));
+    // Cancel: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
@@ -327,11 +328,12 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event deleted.')));
       navigator.pop();
+    // Delete: event has registrations, media deletion failure, or Firestore denial
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );

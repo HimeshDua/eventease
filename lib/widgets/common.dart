@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../models/event.dart';
 
+export '../core/errors.dart';
+
 /// Shared UI helpers — use these everywhere for consistent loading/empty/error
 /// states (SRS 1.6.20).
 class LoadingView extends StatelessWidget {

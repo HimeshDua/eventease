@@ -75,11 +75,12 @@ class _GalleryUploadScreenState extends State<GalleryUploadScreen> {
         const SnackBar(content: Text('Photo uploaded to the gallery.')),
       );
       navigator.pop();
+    // gallery upload failed (image upload failure, Firestore write denial, network error)
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('$error'),
+          content: Text(friendlyError(error)),
           backgroundColor: colorScheme.errorContainer,
         ),
       );
