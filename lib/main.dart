@@ -79,7 +79,22 @@ class AuthGate extends StatelessWidget {
           return const Scaffold(body: LoadingView());
         }
         final user = snap.data;
-        if (user == null) return const LoginScreen();
+        if (user == null) {
+          // Authenticated in Firebase Auth but no Firestore profile document exists.
+          // This typically happens when the account was created in the Firebase
+          // Console without a matching users/{uid} document, or if the profile
+          // was deleted.
+          if (context.read<AuthService>().isAuthenticated) {
+            return Scaffold(
+              body: ErrorView(
+                'We could not find your account profile. Please contact support.',
+                actionLabel: 'Logout',
+                onAction: () => context.read<AuthService>().logout(),
+              ),
+            );
+          }
+          return const LoginScreen();
+        }
         if (!user.active) return const BlockedAccountScreen();
         return HomeShell(user: user);
       },

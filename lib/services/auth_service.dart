@@ -15,6 +15,10 @@ class AuthService extends ChangeNotifier {
   AppUser? _currentUser;
 
   AppUser? get currentUser => _currentUser;
+  /// True when a user is signed in to Firebase Auth, even if their Firestore
+  /// profile document does not yet exist. AuthGate uses this to distinguish
+  /// "not signed in" from "signed in but profile missing".
+  bool get isAuthenticated => _auth.currentUser != null;
 
   /// Emits the AppUser profile (with role) whenever auth state changes.
   Stream<AppUser?> get userStream =>

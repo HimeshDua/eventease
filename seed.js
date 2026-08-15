@@ -13,6 +13,7 @@ const demoUsers = [
   { email: 'attendee@eventease.demo', password: 'Test123!', name: 'Alex Attendee', role: 'attendee' },
   { email: 'organizer@eventease.demo', password: 'Test123!', name: 'Olivia Organizer', role: 'organizer' },
   { email: 'admin@eventease.demo', password: 'Test123!', name: 'Adam Admin', role: 'admin' },
+  { email: 'admin@admin.com', password: 'admin', name: 'Admin', role: 'admin' },
 ];
 
 function request(host, method, path, body, headers) {
@@ -139,6 +140,7 @@ async function main() {
   console.log('  Attendee  | attendee@eventease.demo | Test123! | Alex Attendee');
   console.log('  Organizer | organizer@eventease.demo | Test123! | Olivia Organizer');
   console.log('  Admin     | admin@eventease.demo     | Test123! | Adam Admin');
+  console.log('  Admin Alt   | admin@admin.com       | admin    | Admin');
   console.log('\nAdmin login: admin@eventease.demo / Test123!');
 }
 
