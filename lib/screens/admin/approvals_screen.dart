@@ -1,3 +1,4 @@
+import 'package:eventease/models/app_user.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,64 +22,157 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   @override
   Widget build(BuildContext context) {
     final events = context.read<EventRepository>();
+    final users = context.read<UserRepository>();
     return Scaffold(
       appBar: AppBar(title: const Text('Approvals')),
-      body: StreamBuilder<List<Event>>(
-        stream: events.all(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const ErrorView('Could not load pending events.');
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const LoadingView();
-          }
-          final allEvents = snapshot.data ?? const <Event>[];
-          final pendingEvents =
-              allEvents.where((e) => e.status == EventStatus.pending).toList()
-                ..sort((a, b) {
-                  final aTime =
-                      a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  final bTime =
-                      b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  return aTime.compareTo(bTime);
-                });
-          final cancellationRequests = allEvents
-              .where((e) => e.cancellationRequested)
-              .toList();
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          return SizedBox(
+            width: width,
+            child: StreamBuilder<List<Event>>(
+              stream: events.watchPendingEvents(),
+              builder: (context, pendingSnapshot) {
+                if (pendingSnapshot.hasError) {
+                  return ErrorView(
+                    'Could not load pending events: ${friendlyError(pendingSnapshot.error!)}',
+                    actionLabel: 'Retry',
+                    onAction: () => setState(() {}),
+                  );
+                }
+                if (pendingSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const LoadingView();
+                }
 
-          if (pendingEvents.isEmpty && cancellationRequests.isEmpty) {
-            return const EmptyView(
-              'No events waiting for approval.',
-              icon: Icons.fact_check_outlined,
-            );
-          }
+                return StreamBuilder<List<Event>>(
+                  stream: events.watchCancellationRequests(),
+                  builder: (context, cancellationSnapshot) {
+                    if (cancellationSnapshot.hasError) {
+                      return ErrorView(
+                        'Could not load cancellation requests: ${friendlyError(cancellationSnapshot.error!)}',
+                        actionLabel: 'Retry',
+                        onAction: () => setState(() {}),
+                      );
+                    }
+                    if (cancellationSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const LoadingView();
+                    }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (cancellationRequests.isNotEmpty) ...[
-                Text(
-                  'Cancellation requests',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                for (final event in cancellationRequests)
-                  _CancellationRequestCard(event: event),
-                const SizedBox(height: 24),
-              ],
-              if (pendingEvents.isNotEmpty) ...[
-                Text(
-                  'Pending events',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                for (final event in pendingEvents)
-                  _PendingEventCard(
-                    event: event,
-                    onApproved: () => _notifyRegistrantsIfChanged(event),
-                  ),
-              ],
-            ],
+                    return StreamBuilder<List<AppUser>>(
+                      stream: users.organizerRequests(),
+                      builder: (context, organizerSnapshot) {
+                        if (organizerSnapshot.hasError) {
+                          return ErrorView(
+                            'Could not load organizer requests: ${friendlyError(organizerSnapshot.error!)}',
+                            actionLabel: 'Retry',
+                            onAction: () => setState(() {}),
+                          );
+                        }
+                        if (organizerSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const LoadingView();
+                        }
+
+                        final pendingEvents =
+                            [...(pendingSnapshot.data ?? const <Event>[])]
+                              ..sort((a, b) {
+                                final aTime =
+                                    a.createdAt ??
+                                    DateTime.fromMillisecondsSinceEpoch(0);
+                                final bTime =
+                                    b.createdAt ??
+                                    DateTime.fromMillisecondsSinceEpoch(0);
+                                return aTime.compareTo(bTime);
+                              });
+                        final cancellationRequests =
+                            cancellationSnapshot.data ?? const <Event>[];
+                        final organizerRequests =
+                            [...(organizerSnapshot.data ?? const <AppUser>[])]
+                              ..sort(
+                                (a, b) => a.name.toLowerCase().compareTo(
+                                  b.name.toLowerCase(),
+                                ),
+                              );
+
+                        if (pendingEvents.isEmpty &&
+                            cancellationRequests.isEmpty &&
+                            organizerRequests.isEmpty) {
+                          return const EmptyView(
+                            'No pending approvals.',
+                            icon: Icons.fact_check_outlined,
+                          );
+                        }
+
+                        return ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.sizeOf(context).width,
+                          ),
+                          child: ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              if (organizerRequests.isNotEmpty) ...[
+                                Text(
+                                  'Organizer requests',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                for (final user in organizerRequests)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: _OrganizerRequestCard(user: user),
+                                  ),
+                                const SizedBox(height: 24),
+                              ],
+                              if (cancellationRequests.isNotEmpty) ...[
+                                Text(
+                                  'Cancellation requests',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                for (final event in cancellationRequests)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: _CancellationRequestCard(
+                                      event: event,
+                                    ),
+                                  ),
+                                const SizedBox(height: 24),
+                              ],
+                              if (pendingEvents.isNotEmpty) ...[
+                                Text(
+                                  'Pending events',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                for (final event in pendingEvents)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: _PendingEventCard(
+                                      event: event,
+                                      onApproved: () =>
+                                          _notifyRegistrantsIfChanged(event),
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           );
         },
       ),
@@ -96,6 +190,136 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         message: '${event.title} has been updated and re-approved.',
       );
     }
+  }
+}
+
+class _OrganizerRequestCard extends StatefulWidget {
+  final AppUser user;
+  const _OrganizerRequestCard({required this.user});
+
+  @override
+  State<_OrganizerRequestCard> createState() => _OrganizerRequestCardState();
+}
+
+class _OrganizerRequestCardState extends State<_OrganizerRequestCard> {
+  bool _busy = false;
+
+  Future<void> _approve() async {
+    final users = context.read<UserRepository>();
+    final notifications = context.read<NotificationRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await confirm(
+      context,
+      'Approve organizer request?',
+      '${widget.user.name} will be granted organizer access.',
+    );
+    if (!confirmed) return;
+    setState(() => _busy = true);
+    try {
+      await users.approveOrganizerRequest(widget.user.id);
+      await notifications.send(
+        userId: widget.user.id,
+        type: NotificationTypes.roleApproved,
+        title: 'Organizer access approved',
+        message: 'You can now create and manage events.',
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Organizer request approved.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(friendlyError(error)),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _reject() async {
+    final users = context.read<UserRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await confirm(
+      context,
+      'Reject organizer request?',
+      '${widget.user.name} will remain an attendee and the request will be cleared.',
+    );
+    if (!confirmed) return;
+    setState(() => _busy = true);
+    try {
+      await users.rejectOrganizerRequest(widget.user.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Organizer request rejected.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(friendlyError(error)),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(user.name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(user.email),
+            if (user.phone.isNotEmpty) Text(user.phone),
+            const SizedBox(height: 12),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _reject,
+                    child: const Text('Reject'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _approve,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Approve'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -124,10 +348,7 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     if (!confirmed) return;
     setState(() => _busy = true);
     try {
-      await events.setStatus(
-        widget.event.id,
-        EventStatus.approved,
-      );
+      await events.setStatus(widget.event.id, EventStatus.approved);
       await notifications.send(
         userId: widget.event.organizerId,
         eventId: widget.event.id,
@@ -138,7 +359,7 @@ class _PendingEventCardState extends State<_PendingEventCard> {
       widget.onApproved();
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event approved.')));
-    // Approve/reject events: Firestore write failure or notification fan-out error
+      // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -186,10 +407,7 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     if (reason == null) return;
     setState(() => _busy = true);
     try {
-      await events.setStatus(
-        widget.event.id,
-        EventStatus.rejected,
-      );
+      await events.setStatus(widget.event.id, EventStatus.rejected);
       await notifications.send(
         userId: widget.event.organizerId,
         eventId: widget.event.id,
@@ -201,7 +419,7 @@ class _PendingEventCardState extends State<_PendingEventCard> {
       );
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('Event rejected.')));
-    // Approve/reject events: Firestore write failure or notification fan-out error
+      // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -225,21 +443,14 @@ class _PendingEventCardState extends State<_PendingEventCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    event.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (event.changeReviewPending)
-                  const Chip(
-                    label: Text('Critical change'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
+            Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+            if (event.changeReviewPending) ...[
+              const SizedBox(height: 6),
+              const Chip(
+                label: Text('Critical change'),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               formatEventDate(event.startTime),
@@ -247,25 +458,35 @@ class _PendingEventCardState extends State<_PendingEventCard> {
             ),
             Text(event.location, style: Theme.of(context).textTheme.bodySmall),
             const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: _busy ? null : _reject,
-                  child: const Text('Reject'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _busy ? null : _approve,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Approve'),
-                ),
-              ],
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _reject,
+                    child: const Text('Reject'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _approve,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Approve'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -310,7 +531,7 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation approved.')),
       );
-    // Approve/reject cancellations: Firestore write failure or notification fan-out error
+      // Approve/reject cancellations: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -341,7 +562,7 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Cancellation request rejected.')),
       );
-    // Approve/reject cancellations: Firestore write failure or notification fan-out error
+      // Approve/reject cancellations: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -373,19 +594,29 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: _busy ? null : _reject,
-                  child: const Text('Keep event'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _busy ? null : _approve,
-                  child: const Text('Cancel event'),
-                ),
-              ],
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _reject,
+                    child: const Text('Keep event'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: _busy ? null : _approve,
+                    child: const Text('Cancel event'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

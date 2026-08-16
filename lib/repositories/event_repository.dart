@@ -50,6 +50,19 @@ class EventRepository {
     (snapshot) => snapshot.docs.map(Event.fromDoc).toList(),
   );
 
+  /// Admin approval queue: query only pending events instead of downloading
+  /// and filtering the complete events collection in the presentation layer.
+  Stream<List<Event>> watchPendingEvents() => _events
+      .where('status', isEqualTo: EventStatus.pending)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
+
+  /// Admin cancellation queue kept separate from normal event approval.
+  Stream<List<Event>> watchCancellationRequests() => _events
+      .where('cancellationRequested', isEqualTo: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
+
   Stream<Event> watch(String eventId) =>
       _events.doc(eventId).snapshots().map(Event.fromDoc);
 
@@ -211,6 +224,8 @@ class EventRepository {
 
       transaction.update(eventRef, {
         'status': EventStatus.cancelled,
+        'cancellationRequested': false,
+        'cancellationReason': null,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });

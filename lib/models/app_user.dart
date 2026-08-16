@@ -26,18 +26,39 @@ class AppUser {
   });
 
   factory AppUser.fromDoc(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+    final data = doc.data();
+    if (data is! Map<String, dynamic>) {
+      throw StateError('User ${doc.id} has an invalid Firestore document.');
+    }
+
+    DateTime? parseDate(Object? value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return null;
+    }
+
+    String readString(String field, {String fallback = ''}) {
+      final value = data[field];
+      return value is String ? value : fallback;
+    }
+
+    bool readBool(String field, {required bool fallback}) {
+      final value = data[field];
+      return value is bool ? value : fallback;
+    }
+
+    final image = data['profileImageUrl'];
     return AppUser(
       id: doc.id,
-      name: d['name'] ?? '',
-      email: d['email'] ?? '',
-      phone: d['phone'] ?? '',
-      role: d['role'] ?? 'attendee',
-      profileImageUrl: d['profileImageUrl'],
-      active: d['active'] ?? true,
-      organizerRequested: d['organizerRequested'] ?? false,
-      remindersEnabled: d['remindersEnabled'] ?? true,
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
+      name: readString('name'),
+      email: readString('email'),
+      phone: readString('phone'),
+      role: readString('role', fallback: 'attendee'),
+      profileImageUrl: image is String && image.isNotEmpty ? image : null,
+      active: readBool('active', fallback: true),
+      organizerRequested: readBool('organizerRequested', fallback: false),
+      remindersEnabled: readBool('remindersEnabled', fallback: true),
+      createdAt: parseDate(data['createdAt']),
     );
   }
 

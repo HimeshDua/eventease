@@ -63,44 +63,66 @@ class AdminDashboard extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Events',
-                            value: allEvents.length.toString(),
-                            icon: Icons.event_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Users',
-                            value: allUsers.length.toString(),
-                            icon: Icons.group_outlined,
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth >= 520;
+                        final cardWidth = wide
+                            ? (constraints.maxWidth - 8) / 2
+                            : constraints.maxWidth;
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            SizedBox(
+                              width: cardWidth,
+                              child: _StatCard(
+                                label: 'Events',
+                                value: allEvents.length.toString(),
+                                icon: Icons.event_outlined,
+                              ),
+                            ),
+                            SizedBox(
+                              width: cardWidth,
+                              child: _StatCard(
+                                label: 'Users',
+                                value: allUsers.length.toString(),
+                                icon: Icons.group_outlined,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Registrations',
-                            value: allRegistrations.length.toString(),
-                            icon: Icons.assignment_turned_in_outlined,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Pending',
-                            value: pending.toString(),
-                            icon: Icons.pending_actions_outlined,
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth >= 520;
+                        final cardWidth = wide
+                            ? (constraints.maxWidth - 8) / 2
+                            : constraints.maxWidth;
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            SizedBox(
+                              width: cardWidth,
+                              child: _StatCard(
+                                label: 'Registrations',
+                                value: allRegistrations.length.toString(),
+                                icon: Icons.assignment_turned_in_outlined,
+                              ),
+                            ),
+                            SizedBox(
+                              width: cardWidth,
+                              child: _StatCard(
+                                label: 'Pending',
+                                value: pending.toString(),
+                                icon: Icons.pending_actions_outlined,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                     if (cancellationRequests > 0)

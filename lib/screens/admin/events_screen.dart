@@ -37,8 +37,10 @@ class _EventsScreenState extends State<EventsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
-            child: SearchBar(
-              controller: _search,
+            child: SizedBox(
+              width: double.infinity,
+              child: SearchBar(
+                controller: _search,
               hintText: 'Search events',
               leading: const Icon(Icons.search),
               trailing: [
@@ -52,7 +54,8 @@ class _EventsScreenState extends State<EventsScreen> {
                     icon: const Icon(Icons.close),
                   ),
               ],
-              onChanged: (value) => setState(() => _query = value),
+                onChanged: (value) => setState(() => _query = value),
+              ),
             ),
           ),
           SingleChildScrollView(
@@ -86,7 +89,11 @@ class _EventsScreenState extends State<EventsScreen> {
               stream: events.all(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return const ErrorView('Could not load events.');
+                  return ErrorView(
+                    'Could not load events: ${friendlyError(snapshot.error!)}',
+                    actionLabel: 'Retry',
+                    onAction: () => setState(() {}),
+                  );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const LoadingView();
@@ -192,40 +199,38 @@ class _AdminEventCard extends StatelessWidget {
         onTap: onOpen,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatEventDate(event.startTime),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      event.location,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      children: [
-                        StatusBadge(status: event.status),
-                        Chip(
-                          label: Text('${event.registeredCount} registered'),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Text(
+                event.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              const Icon(Icons.chevron_right),
+              const SizedBox(height: 4),
+              Text(
+                formatEventDate(event.startTime),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                event.location,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  StatusBadge(status: event.status),
+                  Chip(
+                    label: Text('${event.registeredCount} registered'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
             ],
           ),
         ),

@@ -182,7 +182,30 @@ class UserRepository {
   Stream<List<AppUser>> all() => _db
       .collection(Col.users)
       .snapshots()
-      .map((s) => s.docs.map(AppUser.fromDoc).toList());
+      .map(_decodeUsers);
+
+  /// Admin: only users who are currently waiting for organizer approval.
+  Stream<List<AppUser>> organizerRequests() => _db
+      .collection(Col.users)
+      .where('organizerRequested', isEqualTo: true)
+      .snapshots()
+      .map(_decodeUsers);
+
+  /// Admin/user-details stream for one profile. This avoids downloading the
+  /// entire users collection just to inspect a single account.
+  Stream<AppUser> watch(String userId) => _db
+      .collection(Col.users)
+      .doc(userId)
+      .snapshots()
+      .map(AppUser.fromDoc);
+
+  List<AppUser> _decodeUsers(QuerySnapshot<Map<String, dynamic>> snapshot) {
+    try {
+      return snapshot.docs.map(AppUser.fromDoc).toList();
+    } catch (error) {
+      throw StateError('Could not read a user profile: $error');
+    }
+  }
 
   Future<void> updateProfile(
     String userId, {
@@ -207,7 +230,21 @@ class UserRepository {
       .update({'remindersEnabled': enabled});
 
   Future<void> setRole(String userId, String role) =>
-      _db.collection(Col.users).doc(userId).update({'role': role});
+      _db.collection(Col.users).doc(userId).update({
+        'role': role,
+        if (role != Roles.attendee) 'organizerRequested': false,
+      });
+
+  Future<void> approveOrganizerRequest(String userId) =>
+      _db.collection(Col.users).doc(userId).update({
+        'role': Roles.organizer,
+        'organizerRequested': false,
+      });
+
+  Future<void> rejectOrganizerRequest(String userId) =>
+      _db.collection(Col.users).doc(userId).update({
+        'organizerRequested': false,
+      });
 
   Future<void> setActive(String userId, bool active) =>
       _db.collection(Col.users).doc(userId).update({'active': active});

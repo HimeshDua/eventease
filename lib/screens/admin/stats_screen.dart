@@ -13,8 +13,15 @@ import '../../widgets/common.dart';
 /// Admin reports and statistics (SRS 1.6.17). Formulas:
 /// total events, total registrations, total attendees (unique), total users,
 /// top 3 events by registrations, event-wise attendance, average rating.
-class StatsScreen extends StatelessWidget {
+class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
+
+  @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen> {
+  int _retryToken = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +33,7 @@ class StatsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Reports & Statistics')),
       body: StreamBuilder<List<Event>>(
+        key: ValueKey('events-$_retryToken'),
         stream: events.all(),
         builder: (context, eventSnapshot) {
           return StreamBuilder<List<Registration>>(
@@ -43,12 +51,24 @@ class StatsScreen extends StatelessWidget {
                           userSnapshot.hasError ||
                           feedbackSnapshot.hasError;
                       if (hasError) {
-                        return const ErrorView('Could not load statistics.');
+                        final error = eventSnapshot.error ??
+                            regSnapshot.error ??
+                            userSnapshot.error ??
+                            feedbackSnapshot.error;
+                        return ErrorView(
+                          'Could not load statistics: ${friendlyError(error!)}',
+                          actionLabel: 'Retry',
+                          onAction: () => setState(() => _retryToken++),
+                        );
                       }
                       final isLoading =
                           eventSnapshot.connectionState ==
                               ConnectionState.waiting ||
                           regSnapshot.connectionState ==
+                              ConnectionState.waiting ||
+                          userSnapshot.connectionState ==
+                              ConnectionState.waiting ||
+                          feedbackSnapshot.connectionState ==
                               ConnectionState.waiting;
                       if (isLoading) {
                         return const LoadingView();

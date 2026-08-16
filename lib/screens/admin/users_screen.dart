@@ -6,6 +6,7 @@ import '../../models/app_user.dart';
 import '../../repositories/misc_repositories.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
+import 'user_details_screen.dart';
 
 /// Admin user management: search, activate, deactivate, roles (SRS 1.6.17).
 class UsersScreen extends StatefulWidget {
@@ -30,72 +31,110 @@ class _UsersScreenState extends State<UsersScreen> {
     final users = context.read<UserRepository>();
     return Scaffold(
       appBar: AppBar(title: const Text('Users')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SearchBar(
-              controller: _search,
-              hintText: 'Search by name or email',
-              leading: const Icon(Icons.search),
-              trailing: [
-                if (_query.isNotEmpty)
-                  IconButton(
-                    tooltip: 'Clear search',
-                    onPressed: () {
-                      _search.clear();
-                      setState(() => _query = '');
-                    },
-                    icon: const Icon(Icons.close),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          return SizedBox(
+            width: width,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SearchBar(
+                      controller: _search,
+                      hintText: 'Search by name or email',
+                      leading: const Icon(Icons.search),
+                      trailing: [
+                        if (_query.isNotEmpty)
+                          IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
                   ),
+                ),
+                Expanded(
+                  child: StreamBuilder<List<AppUser>>(
+                    stream: users.all(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return ErrorView(
+                          'Could not load users: ${friendlyError(snapshot.error!)}',
+                          actionLabel: 'Retry',
+                          onAction: () => setState(() {}),
+                        );
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const LoadingView();
+                      }
+                      var items = snapshot.data ?? const <AppUser>[];
+                      final normalized = _query.trim().toLowerCase();
+                      if (normalized.isNotEmpty) {
+                        items = items
+                            .where(
+                              (u) =>
+                                  u.name.toLowerCase().contains(normalized) ||
+                                  u.email.toLowerCase().contains(normalized) ||
+                                  u.phone.toLowerCase().contains(normalized),
+                            )
+                            .toList();
+                      }
+                      items = [...items]
+                        ..sort(
+                          (a, b) => a.name
+                              .toLowerCase()
+                              .compareTo(b.name.toLowerCase()),
+                        );
+                      if (items.isEmpty) {
+                        return const EmptyView('No users match your search.');
+                      }
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width,
+                        ),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final user = items[index];
+                          return SizedBox(
+                            width: double.infinity,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      UserDetailsScreen(userId: user.id),
+                                ),
+                              ),
+                              child: _UserCard(user: user),
+                            ),
+                          );
+                        },
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
-              onChanged: (value) => setState(() => _query = value),
             ),
-          ),
-          Expanded(
-            child: StreamBuilder<List<AppUser>>(
-              stream: users.all(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const ErrorView('Could not load users.');
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const LoadingView();
-                }
-                var items = snapshot.data ?? const <AppUser>[];
-                final normalized = _query.trim().toLowerCase();
-                if (normalized.isNotEmpty) {
-                  items = items
-                      .where(
-                        (u) =>
-                            u.name.toLowerCase().contains(normalized) ||
-                            u.email.toLowerCase().contains(normalized),
-                      )
-                      .toList();
-                }
-                items = [...items]
-                  ..sort(
-                    (a, b) =>
-                        a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-                  );
-                if (items.isEmpty) {
-                  return const EmptyView('No users match your search.');
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final user = items[index];
-                    return _UserCard(user: user);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
+
 }
 
 class _UserCard extends StatefulWidget {
@@ -213,71 +252,75 @@ class _UserCardState extends State<_UserCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(child: Text(_initials(user.name))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        user.email,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (!user.active)
-                        Text(
-                          'Deactivated',
-                          style: TextStyle(color: colorScheme.error),
-                        ),
-                    ],
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(child: Text(_initials(user.name))),
+              title: Text(
+                user.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.email,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: 'Change role',
-                  onSelected: _setRole,
-                  itemBuilder: (context) => [
-                    for (final role in const [
-                      Roles.attendee,
-                      Roles.organizer,
-                      Roles.admin,
-                    ])
-                      PopupMenuItem(
-                        value: role,
-                        child: Row(
-                          children: [
-                            if (user.role == role)
-                              Icon(
-                                Icons.check,
-                                size: 18,
-                                color: colorScheme.primary,
-                              ),
-                            const SizedBox(width: 8),
-                            Text(_roleLabel(role)),
-                          ],
-                        ),
+                  if (!user.active)
+                    Text(
+                      'Deactivated',
+                      style: TextStyle(color: colorScheme.error),
+                    ),
+                ],
+              ),
+              trailing: PopupMenuButton<String>(
+                tooltip: 'Change role',
+                onSelected: _setRole,
+                itemBuilder: (context) => [
+                  for (final role in const [
+                    Roles.attendee,
+                    Roles.organizer,
+                    Roles.admin,
+                  ])
+                    PopupMenuItem(
+                      value: role,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (user.role == role)
+                            Icon(
+                              Icons.check,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
+                          if (user.role == role) const SizedBox(width: 8),
+                          Text(_roleLabel(role)),
+                        ],
                       ),
-                  ],
-                  child: Chip(
-                    label: Text(_roleLabel(user.role)),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                    ),
+                ],
+                child: Chip(
+                  label: Text(_roleLabel(user.role)),
+                  visualDensity: VisualDensity.compact,
                 ),
-              ],
+              ),
             ),
             if (user.organizerRequested && user.role == Roles.attendee)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Row(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     const Icon(Icons.badge_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    const Expanded(child: Text('Requested organizer access')),
+                    const Text('Requested organizer access'),
                     FilledButton.tonal(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
                       onPressed: _busy ? null : () => _setRole(Roles.organizer),
                       child: const Text('Approve'),
                     ),
