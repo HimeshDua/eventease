@@ -1,4 +1,6 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
@@ -137,13 +139,32 @@ class RegistrationRepository {
 
   /// Marks a pass attended and creates its one deterministic attendance record.
   Future<Registration> checkInByQr(String qrCode, String eventId) async {
-    final qrSnapshot = await _regs.where('qrCode', isEqualTo: qrCode).limit(1).get();
+    final normalizedQr = qrCode.trim();
+    if (normalizedQr.isEmpty || eventId.isEmpty) {
+      throw StateError('Invalid QR code.');
+    }
+
+    final eventRef = _db.collection(Col.events).doc(eventId);
+    final eventSnapshot = await eventRef.get();
+    if (!eventSnapshot.exists) {
+      throw StateError('Event not found.');
+    }
+    final event = Event.fromDoc(eventSnapshot);
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null || event.organizerId != currentUserId) {
+      throw StateError('You can only check in attendees for your own event.');
+    }
+
+    final qrSnapshot = await _regs
+        .where('eventId', isEqualTo: eventId)
+        .where('qrCode', isEqualTo: normalizedQr)
+        .limit(1)
+        .get();
     if (qrSnapshot.docs.isEmpty) {
       throw StateError('Invalid QR code.');
     }
 
     final registrationRef = qrSnapshot.docs.first.reference;
-    final eventRef = _db.collection(Col.events).doc(eventId);
     final attendanceRef = _db.collection(Col.attendance).doc(registrationRef.id);
 
     await _db.runTransaction((transaction) async {
@@ -164,7 +185,10 @@ class RegistrationRepository {
 
       final registration = Registration.fromDoc(registrationSnapshot);
       final event = Event.fromDoc(eventSnapshot);
-      if (registration.qrCode != qrCode) {
+      if (event.organizerId != currentUserId) {
+        throw StateError('You can only check in attendees for your own event.');
+      }
+      if (registration.qrCode != normalizedQr) {
         throw StateError('Invalid QR code.');
       }
       if (registration.eventId != eventId) {
@@ -209,6 +233,42 @@ class RegistrationRepository {
       .where('eventId', isEqualTo: eventId)
       .snapshots()
       .map((snapshot) => snapshot.docs.map(Registration.fromDoc).toList());
+
+
+  /// Streams registrations belonging only to the supplied organizer event IDs.
+  /// Each query remains event-scoped so Firestore ownership rules can enforce
+  /// the organizer boundary without downloading the global registrations set.
+  Stream<List<Registration>> byEvents(Iterable<String> eventIds) {
+    final ids = eventIds.where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return Stream.value(const <Registration>[]);
+
+    late final StreamController<List<Registration>> controller;
+    final latest = <String, List<Registration>>{};
+    final subscriptions = <StreamSubscription<List<Registration>>>[];
+
+    controller = StreamController<List<Registration>>(
+      sync: true,
+      onListen: () {
+        for (final eventId in ids) {
+          final subscription = byEvent(eventId).listen((items) {
+            latest[eventId] = items;
+            final merged = <Registration>[];
+            for (final eventItems in latest.values) {
+              merged.addAll(eventItems);
+            }
+            controller.add(merged);
+          }, onError: controller.addError);
+          subscriptions.add(subscription);
+        }
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+    return controller.stream;
+  }
 
   Stream<List<Registration>> allRegistrations() =>
       _regs.snapshots().map((snapshot) => snapshot.docs.map(Registration.fromDoc).toList());

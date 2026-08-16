@@ -67,10 +67,19 @@ class ParticipantsScreen extends StatelessWidget {
                     title: Text(reg.participantName.isNotEmpty
                         ? reg.participantName
                         : 'User'),
-                    subtitle: Text(
-                      reg.participantEmail,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          reg.participantEmail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (reg.registeredAt != null)
+                          Text('Registered ${formatEventDate(reg.registeredAt!)}'),
+                        if (reg.checkedInAt != null)
+                          Text('Checked in ${formatEventDate(reg.checkedInAt!)}'),
+                      ],
                     ),
                     trailing: _RegistrationStatusChip(status: reg.status),
                   ),

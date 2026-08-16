@@ -104,7 +104,11 @@ class _HomeShellState extends State<HomeShell> {
           OrganizerDashboard(),
         ),
         _ShellDestination('Discover', Icons.explore_outlined, DiscoverScreen()),
-        _ShellDestination('My Events', Icons.event_outlined, MyEventsScreen()),
+        _ShellDestination(
+          'Manage Events',
+          Icons.event_outlined,
+          OrganizerDashboard(showHeader: false, showStats: false),
+        ),
         _ShellDestination(
           'Alerts',
           Icons.notifications_outlined,

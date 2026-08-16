@@ -34,6 +34,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   double _latitude = 0;
   double _longitude = 0;
   String? _imageUrl;
+  String? _originalImageUrl;
   XFile? _pendingImage;
   bool _busy = false;
   bool _loaded = false;
@@ -83,6 +84,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             _latitude = event.latitude;
             _longitude = event.longitude;
             _imageUrl = event.imageUrl;
+            _originalImageUrl = event.imageUrl;
             _loaded = true;
           }
           if (event != null && event.hasStarted) {
@@ -337,6 +339,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       final storage = context.read<StorageService>();
 
       final eventId = widget.eventId ?? events.newId();
+      final previousImageUrl = _originalImageUrl;
 
       if (_pendingImage != null) {
         _imageUrl = await storage.uploadImage(
@@ -378,8 +381,18 @@ class _EventFormScreenState extends State<EventFormScreen> {
           'startTime': event.startTime,
           'endTime': event.endTime,
           'maxParticipants': event.maxParticipants,
-          if (_imageUrl != null) 'imageUrl': _imageUrl,
+          'imageUrl': _imageUrl,
         });
+        if (_imageUrl != previousImageUrl &&
+            previousImageUrl != null &&
+            previousImageUrl.isNotEmpty) {
+          try {
+            await storage.deleteByUrl(previousImageUrl);
+          } catch (_) {
+            // Firestore is already correct; an orphaned old cover can be
+            // cleaned up later without blocking the event edit.
+          }
+        }
       }
 
       if (!mounted) return;

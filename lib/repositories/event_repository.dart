@@ -123,6 +123,12 @@ class EventRepository {
       }
 
       final update = <String, dynamic>{...changes};
+      final requestedCapacity = changes['maxParticipants'];
+      if (requestedCapacity is int && requestedCapacity < event.registeredCount) {
+        throw StateError(
+          'Capacity cannot be lower than the current registration count.',
+        );
+      }
       const criticalFields = {
         'startTime',
         'endTime',

@@ -32,6 +32,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ? null
         : capture.barcodes.first.rawValue;
     if (code == null) {
+      _scanLocked = false;
       _showResult(
         'Could not read the QR code. Please try again.',
         isError: true,

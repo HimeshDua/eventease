@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
 import '../../models/event.dart';
+import '../../models/event_feedback.dart';
 import '../../models/registration.dart';
 import '../../repositories/event_repository.dart';
+import '../../repositories/misc_repositories.dart';
 import '../../repositories/registration_repository.dart';
 import '../../widgets/common.dart';
 import '../shared/gallery_screen.dart';
@@ -52,7 +54,18 @@ class OrganizerEventDetailsScreen extends StatelessWidget {
             stream: context.read<RegistrationRepository>().byEvent(eventId),
             builder: (context, regSnapshot) {
               final registrations = regSnapshot.data ?? const <Registration>[];
-              return _Body(event: event, registrations: registrations);
+              return StreamBuilder<List<EventFeedback>>(
+                stream: context.read<FeedbackRepository>().byEvent(eventId),
+                builder: (context, feedbackSnapshot) {
+                  final feedback =
+                      feedbackSnapshot.data ?? const <EventFeedback>[];
+                  return _Body(
+                    event: event,
+                    registrations: registrations,
+                    feedback: feedback,
+                  );
+                },
+              );
             },
           );
         },
@@ -63,9 +76,7 @@ class OrganizerEventDetailsScreen extends StatelessWidget {
   void _openEdit(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => EventFormScreen(eventId: eventId),
-      ),
+      MaterialPageRoute(builder: (_) => EventFormScreen(eventId: eventId)),
     );
   }
 }
@@ -73,7 +84,12 @@ class OrganizerEventDetailsScreen extends StatelessWidget {
 class _Body extends StatelessWidget {
   final Event event;
   final List<Registration> registrations;
-  const _Body({required this.event, required this.registrations});
+  final List<EventFeedback> feedback;
+  const _Body({
+    required this.event,
+    required this.registrations,
+    required this.feedback,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -87,8 +103,7 @@ class _Body extends StatelessWidget {
         .where((r) => r.status == RegistrationStatus.cancelled)
         .length;
 
-    final canScan =
-        event.status == EventStatus.approved && !event.hasEnded;
+    final canScan = event.status == EventStatus.approved && !event.hasEnded;
     final canAnnounce =
         event.status == EventStatus.approved && !event.hasStarted;
     final canUploadGallery = event.isCompleted;
@@ -96,6 +111,10 @@ class _Body extends StatelessWidget {
         event.status == EventStatus.approved &&
         !event.hasStarted &&
         !event.cancellationRequested;
+    final averageRating = feedback.isEmpty
+        ? 0.0
+        : feedback.map((item) => item.rating).fold<int>(0, (a, b) => a + b) /
+              feedback.length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -106,20 +125,35 @@ class _Body extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      event.imageUrl!,
+                      height: 190,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                const SizedBox(height: 12),
                 Text(
                   event.title,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  formatEventDate(event.startTime),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  event.category,
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
+                const SizedBox(height: 8),
+                Text(event.description),
+                const SizedBox(height: 8),
+                Text('Starts: ${formatEventDate(event.startTime)}'),
+                Text('Ends: ${formatEventDate(event.endTime)}'),
                 const SizedBox(height: 4),
-                Text(
-                  event.location,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text('Location: ${event.location}'),
+                Text('Capacity: ${event.maxParticipants}'),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -143,10 +177,37 @@ class _Body extends StatelessWidget {
                 ),
                 if (event.changeReviewPending) ...[
                   const SizedBox(height: 8),
+                  const Chip(label: Text('Critical change pending review')),
+                ],
+                if (event.cancellationRequested) ...[
+                  const SizedBox(height: 8),
                   const Chip(
-                    label: Text('Critical change pending review'),
+                    label: Text('Cancellation request pending review'),
                   ),
                 ],
+                const SizedBox(height: 12),
+                if (event.rules.isNotEmpty) ...[
+                  Text('Rules', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(event.rules),
+                  const SizedBox(height: 8),
+                ],
+                if (event.contactInfo.isNotEmpty) ...[
+                  Text(
+                    'Contact',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(event.contactInfo),
+                  const SizedBox(height: 8),
+                ],
+                Text(
+                  'Remaining capacity: ${event.availableSeats.clamp(0, event.maxParticipants)}',
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Feedback: ${feedback.length} reviews · ${averageRating.toStringAsFixed(1)} / 5',
+                ),
               ],
             ),
           ),
@@ -208,18 +269,14 @@ class _Body extends StatelessWidget {
   void _openParticipants(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ParticipantsScreen(eventId: event.id),
-      ),
+      MaterialPageRoute(builder: (_) => ParticipantsScreen(eventId: event.id)),
     );
   }
 
   void _openScanner(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ScannerScreen(eventId: event.id),
-      ),
+      MaterialPageRoute(builder: (_) => ScannerScreen(eventId: event.id)),
     );
   }
 
@@ -227,10 +284,8 @@ class _Body extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AnnouncementsScreen(
-          eventId: event.id,
-          eventTitle: event.title,
-        ),
+        builder: (_) =>
+            AnnouncementsScreen(eventId: event.id, eventTitle: event.title),
       ),
     );
   }
@@ -247,18 +302,14 @@ class _Body extends StatelessWidget {
   void _openGalleryUpload(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => GalleryUploadScreen(eventId: event.id),
-      ),
+      MaterialPageRoute(builder: (_) => GalleryUploadScreen(eventId: event.id)),
     );
   }
 
   void _openGallery(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => GalleryScreen(eventId: event.id),
-      ),
+      MaterialPageRoute(builder: (_) => GalleryScreen(eventId: event.id)),
     );
   }
 
@@ -314,7 +365,7 @@ class _Body extends StatelessWidget {
         );
       }
       navigator.pop();
-    // cancellation request failed (not owned, already requested, network error)
+      // cancellation request failed (not owned, already requested, network error)
     } catch (error) {
       if (context.mounted) {
         messenger.showSnackBar(
@@ -353,10 +404,7 @@ class _ActionTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: Icon(icon, color: iconColor ?? effectiveColor),
-        title: Text(
-          title,
-          style: TextStyle(color: effectiveColor),
-        ),
+        title: Text(title, style: TextStyle(color: effectiveColor)),
         subtitle: Text(subtitle),
         trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
         enabled: onTap != null,
