@@ -33,6 +33,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   DateTime? _endTime;
   double _latitude = 0;
   double _longitude = 0;
+  bool _locationSelected = false;
   String? _imageUrl;
   String? _originalImageUrl;
   XFile? _pendingImage;
@@ -83,6 +84,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             _endTime = event.endTime;
             _latitude = event.latitude;
             _longitude = event.longitude;
+            _locationSelected = event.latitude != 0 || event.longitude != 0;
             _imageUrl = event.imageUrl;
             _originalImageUrl = event.imageUrl;
             _loaded = true;
@@ -152,24 +154,37 @@ class _EventFormScreenState extends State<EventFormScreen> {
             },
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _DateTimeField(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fields = [
+                _DateTimeField(
                   label: 'Start time *',
                   value: _startTime,
-                  onTap: () => _pickStartTime(),
+                  onTap: _pickStartTime,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _DateTimeField(
+                _DateTimeField(
                   label: 'End time *',
                   value: _endTime,
-                  onTap: () => _pickEndTime(),
+                  onTap: _pickEndTime,
                 ),
-              ),
-            ],
+              ];
+              if (constraints.maxWidth < 520) {
+                return Column(
+                  children: [
+                    fields[0],
+                    const SizedBox(height: 12),
+                    fields[1],
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: fields[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: fields[1]),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -198,8 +213,21 @@ class _EventFormScreenState extends State<EventFormScreen> {
           LocationPicker(
             latitude: _latitude,
             longitude: _longitude,
-            onLatitudeChanged: (value) => _latitude = value,
-            onLongitudeChanged: (value) => _longitude = value,
+            isSelected: _locationSelected,
+            onLatitudeChanged: (value) {
+              if (!mounted) return;
+              setState(() {
+                _latitude = value;
+                _locationSelected = true;
+              });
+            },
+            onLongitudeChanged: (value) {
+              if (!mounted) return;
+              setState(() {
+                _longitude = value;
+                _locationSelected = true;
+              });
+            },
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -315,7 +343,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       showSnack(context, 'End time must be after start time.', error: true);
       return;
     }
-    if (_latitude == 0 && _longitude == 0) {
+    if (!_locationSelected || (_latitude == 0 && _longitude == 0)) {
       showSnack(
         context,
         'Please set the venue location on the map.',

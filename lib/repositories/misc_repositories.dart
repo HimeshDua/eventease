@@ -82,9 +82,16 @@ class NotificationRepository {
   Stream<List<AppNotification>> byUser(String userId) => _db
       .collection(Col.notifications)
       .where('userId', isEqualTo: userId)
-      .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((s) => s.docs.map(AppNotification.fromDoc).toList());
+      .map((s) {
+        final items = s.docs.map(AppNotification.fromDoc).toList();
+        items.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bTime.compareTo(aTime);
+        });
+        return items;
+      });
 
   Stream<int> unreadCount(String userId) => _db
       .collection(Col.notifications)

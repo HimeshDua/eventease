@@ -11,6 +11,7 @@ class LocationPicker extends StatefulWidget {
   final double longitude;
   final ValueChanged<double> onLatitudeChanged;
   final ValueChanged<double> onLongitudeChanged;
+  final bool isSelected;
 
   const LocationPicker({
     super.key,
@@ -18,6 +19,7 @@ class LocationPicker extends StatefulWidget {
     required this.longitude,
     required this.onLatitudeChanged,
     required this.onLongitudeChanged,
+    this.isSelected = false,
   });
 
   @override
@@ -38,6 +40,30 @@ class _LocationPickerState extends State<LocationPicker> {
     _longitude = widget.longitude != 0
         ? widget.longitude
         : MapDefaults.karachiLongitude;
+  }
+
+
+  @override
+  void didUpdateWidget(covariant LocationPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final locationChanged =
+        oldWidget.latitude != widget.latitude ||
+        oldWidget.longitude != widget.longitude;
+    if (!locationChanged) return;
+
+    _latitude = widget.latitude != 0
+        ? widget.latitude
+        : MapDefaults.karachiLatitude;
+    _longitude = widget.longitude != 0
+        ? widget.longitude
+        : MapDefaults.karachiLongitude;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _mapController.move(
+        LatLng(_latitude, _longitude),
+        MapDefaults.pickerZoom,
+      );
+    });
   }
 
   void _onTap(LatLng point) {
@@ -61,44 +87,53 @@ class _LocationPickerState extends State<LocationPicker> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 240,
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: center,
-                initialZoom: MapDefaults.pickerZoom,
-                onTap: (_, point) => _onTap(point),
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                ),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: MapDefaults.tileUrl,
-                  userAgentPackageName: MapDefaults.userAgentPackageName,
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: center,
-                      width: 40,
-                      height: 40,
-                      child: Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final mapHeight =
+                  (constraints.maxWidth * 0.58).clamp(200.0, 300.0).toDouble();
+              return SizedBox(
+                height: mapHeight,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: center,
+                    initialZoom: MapDefaults.pickerZoom,
+                    onTap: (_, point) => _onTap(point),
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                     ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: MapDefaults.tileUrl,
+                      userAgentPackageName: MapDefaults.userAgentPackageName,
+                    ),
+                    if (widget.isSelected)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: center,
+                            width: 40,
+                            height: 40,
+                            child: Icon(
+                              Icons.location_on,
+                              size: 40,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          'Tap the map to set the venue location • OpenStreetMap contributors',
+          widget.isSelected
+              ? 'Venue pin selected • Tap the map to move it • OpenStreetMap contributors'
+              : 'Tap the map to set the venue location • OpenStreetMap contributors',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

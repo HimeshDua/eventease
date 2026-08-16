@@ -23,16 +23,24 @@ class AppNotification {
   });
 
   factory AppNotification.fromDoc(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+    final raw = doc.data();
+    final d = raw is Map<String, dynamic> ? raw : <String, dynamic>{};
+    final created = d['createdAt'];
+    DateTime? createdAt;
+    if (created is Timestamp) {
+      createdAt = created.toDate();
+    } else if (created is DateTime) {
+      createdAt = created;
+    }
     return AppNotification(
       id: doc.id,
-      userId: d['userId'] ?? '',
-      eventId: d['eventId'],
-      type: d['type'] ?? '',
-      title: d['title'] ?? '',
-      message: d['message'] ?? '',
-      isRead: d['isRead'] ?? false,
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
+      userId: d['userId']?.toString() ?? '',
+      eventId: d['eventId']?.toString(),
+      type: d['type']?.toString() ?? '',
+      title: d['title']?.toString() ?? 'Notification',
+      message: d['message']?.toString() ?? '',
+      isRead: d['isRead'] == true,
+      createdAt: createdAt,
     );
   }
 

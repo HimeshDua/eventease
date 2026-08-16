@@ -42,14 +42,30 @@ class OrganizerDashboard extends StatelessWidget {
 
         final items = snapshot.data ?? const <Event>[];
         final now = DateTime.now();
-        final pending = items.where((e) => e.status == EventStatus.pending).length;
-        final approved = items.where((e) => e.status == EventStatus.approved).length;
-        final rejected = items.where((e) => e.status == EventStatus.rejected).length;
-        final cancelled = items.where((e) => e.status == EventStatus.cancelled).length;
-        final upcoming = items
-            .where((e) => e.status == EventStatus.approved && e.startTime.isAfter(now) && !e.hasEnded)
+        final pending = items
+            .where((e) => e.status == EventStatus.pending)
             .length;
-        final totalRegistrations = items.fold<int>(0, (sum, event) => sum + event.registeredCount);
+        final approved = items
+            .where((e) => e.status == EventStatus.approved)
+            .length;
+        final rejected = items
+            .where((e) => e.status == EventStatus.rejected)
+            .length;
+        final cancelled = items
+            .where((e) => e.status == EventStatus.cancelled)
+            .length;
+        final upcoming = items
+            .where(
+              (e) =>
+                  e.status == EventStatus.approved &&
+                  e.startTime.isAfter(now) &&
+                  !e.hasEnded,
+            )
+            .length;
+        final totalRegistrations = items.fold<int>(
+          0,
+          (sum, event) => sum + event.registeredCount,
+        );
         final sorted = [...items]
           ..sort((a, b) {
             final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -60,36 +76,66 @@ class OrganizerDashboard extends StatelessWidget {
         return StreamBuilder<List<Registration>>(
           stream: registrationsRepository.byEvents(items.map((e) => e.id)),
           builder: (context, registrationSnapshot) {
-            if (registrationSnapshot.hasError) {
-              return const ErrorView('Could not load organizer attendance data.');
-            }
-            final registrations = registrationSnapshot.data ?? const <Registration>[];
+            final registrations =
+                registrationSnapshot.data ?? const <Registration>[];
             final attendance = registrations
                 .where((r) => r.status == RegistrationStatus.attended)
                 .length;
 
             return Column(
               children: [
+                if (registrationSnapshot.hasError)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: MaterialBanner(
+                      actions: [
+                        TextButton(
+                          onPressed: () => registrationSnapshot.data,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                      content: const Text(
+                        'Attendance details are temporarily unavailable. Your events and registration totals are still shown.',
+                      ),
+                      leading: const Icon(Icons.info_outline),
+                    ),
+                  ),
                 if (showHeader)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Organizer dashboard',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ),
-                        FilledButton.icon(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final title = Text(
+                          'Organizer dashboard',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        );
+                        final action = FilledButton.icon(
                           onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const EventFormScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const EventFormScreen(),
+                            ),
                           ),
                           icon: const Icon(Icons.add),
                           label: const Text('New event'),
-                        ),
-                      ],
+                        );
+                        if (constraints.maxWidth < 460) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              title,
+                              const SizedBox(height: 10),
+                              action,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: title),
+                            action,
+                          ],
+                        );
+                      },
                     ),
                   ),
                 if (!showHeader)
@@ -100,7 +146,9 @@ class OrganizerDashboard extends StatelessWidget {
                       child: FilledButton.icon(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const EventFormScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const EventFormScreen(),
+                          ),
                         ),
                         icon: const Icon(Icons.add),
                         label: const Text('New event'),
@@ -134,7 +182,9 @@ class OrganizerDashboard extends StatelessWidget {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => OrganizerEventDetailsScreen(eventId: event.id),
+                                  builder: (_) => OrganizerEventDetailsScreen(
+                                    eventId: event.id,
+                                  ),
                                 ),
                               ),
                             );
@@ -183,39 +233,56 @@ class _StatsGrid extends StatelessWidget {
       ('Registrations', registrations, Icons.group_outlined),
       ('Attendance', attendance, Icons.how_to_reg_outlined),
     ];
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 190,
-        mainAxisExtent: 86,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) {
-        final stat = stats[index];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                Icon(stat.$3),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(stat.$1, style: Theme.of(context).textTheme.bodySmall),
-                      Text(stat.$2.toString(), style: Theme.of(context).textTheme.titleLarge),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth >= 600
+            ? 3
+            : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: 82,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
           ),
+          itemCount: stats.length,
+          itemBuilder: (context, index) {
+            final stat = stats[index];
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Icon(stat.$3),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            stat.$1,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            stat.$2.toString(),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
