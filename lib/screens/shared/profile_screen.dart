@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants.dart';
+import '../../core/validators/auth_validators.dart';
 import '../../models/app_user.dart';
 import '../../repositories/misc_repositories.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/common.dart';
+import '../auth/auth_widgets.dart';
 import 'contact_about_screen.dart';
 
 /// Profile, avatar, password, reminder preference, organizer request (SRS 1.6.15).
@@ -106,60 +108,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.read<AuthService>();
-    final controller = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final formKey = GlobalKey<FormState>();
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    bool busy = false;
+    String? errorText;
+
+    await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Change password'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'New password'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Change password'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (errorText != null) ...[
+                  Text(
+                    errorText!,
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                PasswordFormField(
+                  controller: currentCtrl,
+                  label: 'Current password',
+                  enabled: !busy,
+                  autofillHints: const [AutofillHints.password],
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? 'Current password is required'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                PasswordFormField(
+                  controller: newCtrl,
+                  label: 'New password',
+                  enabled: !busy,
+                  autofillHints: const [AutofillHints.newPassword],
+                  validator: AuthValidators.password,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        busy = true;
+                        errorText = null;
+                      });
+                      try {
+                        await auth.changePassword(
+                          currentPassword: currentCtrl.text,
+                          newPassword: newCtrl.text,
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Password changed.')),
+                        );
+                      // Common errors: wrong current password, requires-recent-login, network failure.
+                      } catch (error) {
+                        setDialogState(() {
+                          busy = false;
+                          errorText = friendlyError(error);
+                        });
+                      }
+                    },
+              child: busy
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Change'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Change'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true) {
-      controller.dispose();
-      return;
-    }
-    final newPassword = controller.text;
-    controller.dispose();
-    if (newPassword.length < 6) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text('Password must be at least 6 characters.'),
-          backgroundColor: colorScheme.errorContainer,
-        ),
-      );
-      return;
-    }
-    try {
-      await auth.changePassword(newPassword);
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Password changed.')),
-      );
-    // Common errors: requires-recent-login, network failure.
-    } catch (error) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(friendlyError(error)),
-          backgroundColor: colorScheme.errorContainer,
-        ),
-      );
-    }
+    currentCtrl.dispose();
+    newCtrl.dispose();
   }
 
   Future<void> _toggleReminders(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/validators/auth_validators.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
+import 'auth_widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,9 +19,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
+
+  final _emailFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _confirmFocus = FocusNode();
+
   bool _wantsOrganizer = false;
   bool _busy = false;
-  bool _obscurePassword = true;
+  String _passwordValue = '';
 
   @override
   void dispose() {
@@ -28,13 +36,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phone.dispose();
     _password.dispose();
     _confirmPassword.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     try {
       await context.read<AuthService>().register(
         name: _name.text.trim(),
@@ -54,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(friendlyError(e)),
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            backgroundColor: colorScheme.errorContainer,
           ),
         );
       }
@@ -71,95 +85,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             children: [
               TextFormField(
                 controller: _name,
+                enabled: !_busy,
                 decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.name],
+                validator: AuthValidators.name,
+                onFieldSubmitted: (_) => _emailFocus.requestFocus(),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _email,
+                enabled: !_busy,
+                focusNode: _emailFocus,
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Email is required';
-                  }
-                  final trimmed = v.trim();
-                  if (!trimmed.contains('@')) {
-                    return 'Enter a valid email';
-                  }
-                  return null;
-                },
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                validator: AuthValidators.email,
+                onFieldSubmitted: (_) => _phoneFocus.requestFocus(),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phone,
+                enabled: !_busy,
+                focusNode: _phoneFocus,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
                 keyboardType: TextInputType.phone,
-                validator: (v) {
-                  final trimmed = v?.trim() ?? '';
-                  if (trimmed.length < 7) {
-                    return 'Enter a valid phone number';
-                  }
-                  return null;
-                },
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.telephoneNumber],
+                validator: AuthValidators.phone,
+                onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              PasswordFormField(
                 controller: _password,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: IconButton(
-                    tooltip: _obscurePassword
-                        ? 'Show password'
-                        : 'Hide password',
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                  ),
-                ),
-                obscureText: _obscurePassword,
-                validator: (v) {
-                  if (v == null || v.isEmpty) {
-                    return 'Password is required';
-                  }
-                  if (v.length < 6) {
-                    return 'Minimum 6 characters';
-                  }
-                  return null;
-                },
+                enabled: !_busy,
+                focusNode: _passwordFocus,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.newPassword],
+                validator: AuthValidators.password,
+                onChanged: (v) => setState(() => _passwordValue = v),
+                onFieldSubmitted: () => _confirmFocus.requestFocus(),
               ),
+              PasswordStrengthBar(password: _passwordValue),
               const SizedBox(height: 16),
-              TextFormField(
+              PasswordFormField(
                 controller: _confirmPassword,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm password',
-                ),
-                obscureText: _obscurePassword,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please confirm your password';
-                  }
-                  if (value != _password.text) {
-                    return 'Passwords do not match';
-                  }
-                  return null;
-                },
+                label: 'Confirm password',
+                enabled: !_busy,
+                focusNode: _confirmFocus,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.newPassword],
+                validator: (v) =>
+                    AuthValidators.confirmPassword(v, _password.text),
+                onFieldSubmitted: _busy ? null : _register,
               ),
               const SizedBox(height: 8),
               SwitchListTile(
                 title: const Text('I want to organize events'),
                 subtitle: const Text('Requires administrator approval'),
                 value: _wantsOrganizer,
-                onChanged: (v) => setState(() => _wantsOrganizer = v),
+                onChanged: _busy
+                    ? null
+                    : (v) => setState(() => _wantsOrganizer = v),
               ),
               const SizedBox(height: 16),
               FilledButton(

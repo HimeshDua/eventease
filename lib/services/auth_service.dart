@@ -71,11 +71,23 @@ class AuthService extends ChangeNotifier {
   Future<void> resetPassword(String email) =>
       _auth.sendPasswordResetEmail(email: email);
 
-  Future<void> changePassword(String newPassword) async {
+  /// Changes the signed-in user's password. Firebase requires a "recent"
+  /// login for security-sensitive actions like this, so we re-authenticate
+  /// with the current password first rather than surfacing a confusing
+  /// requires-recent-login error straight from Firebase.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     final user = _auth.currentUser;
-    if (user == null) {
+    if (user == null || user.email == null) {
       throw Exception('Please sign in again to change your password.');
     }
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
     await user.updatePassword(newPassword);
   }
 
