@@ -56,16 +56,16 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                   return const LoadingView();
                 }
                 final regs = regSnapshot.data ?? const <Registration>[];
-                return StreamBuilder<Map<String, Event>>(
-                  stream: events.all().map(
-                    (list) => {for (final event in list) event.id: event},
-                  ),
+                final eventIds = regs.map((registration) => registration.eventId).toList();
+                return StreamBuilder<List<Event>>(
+                  stream: events.byIds(eventIds),
                   builder: (context, eventSnapshot) {
                     if (eventSnapshot.hasError) {
                       return const ErrorView('Could not load event details.');
                     }
-                    final eventMap =
-                        eventSnapshot.data ?? const <String, Event>{};
+                    final eventMap = {
+                      for (final event in eventSnapshot.data ?? const <Event>[]) event.id: event,
+                    };
                     final joined = <_Joined>[];
                     for (final reg in regs) {
                       final event = eventMap[reg.eventId];

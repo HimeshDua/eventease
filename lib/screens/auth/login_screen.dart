@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _passwordFocus = FocusNode();
+  final _emailFocus = FocusNode();
   bool _busy = false;
 
   @override
@@ -25,13 +26,18 @@ class _LoginScreenState extends State<LoginScreen> {
     _email.dispose();
     _password.dispose();
     _passwordFocus.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
     if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _passwordFocus.unfocus();
+      _emailFocus.unfocus();
+    });
     final messenger = ScaffoldMessenger.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     try {
@@ -173,6 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _email,
                   enabled: !_busy,
+                  focusNode: _emailFocus,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,

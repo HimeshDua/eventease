@@ -13,7 +13,8 @@ import '../../widgets/location_picker.dart';
 /// Create or edit an event (SRS 1.6.11). New events start as pending.
 class EventFormScreen extends StatefulWidget {
   final String? eventId;
-  const EventFormScreen({super.key, this.eventId});
+  final bool adminMode;
+  const EventFormScreen({super.key, this.eventId, this.adminMode = false});
 
   @override
   State<EventFormScreen> createState() => _EventFormScreenState();
@@ -39,6 +40,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   XFile? _pendingImage;
   bool _busy = false;
   bool _loaded = false;
+  String? _eventOrganizerId;
 
   @override
   void dispose() {
@@ -87,6 +89,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             _locationSelected = event.latitude != 0 || event.longitude != 0;
             _imageUrl = event.imageUrl;
             _originalImageUrl = event.imageUrl;
+            _eventOrganizerId = event.organizerId;
             _loaded = true;
           }
           if (event != null && event.hasStarted) {
@@ -368,17 +371,18 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
       final eventId = widget.eventId ?? events.newId();
       final previousImageUrl = _originalImageUrl;
+      final eventOrganizerId = _eventOrganizerId ?? user.id;
 
       if (_pendingImage != null) {
         _imageUrl = await storage.uploadImage(
           _pendingImage!,
-          'events/${user.id}/$eventId/cover.jpg',
+          'events/$eventOrganizerId/$eventId/cover.jpg',
         );
       }
 
       final event = Event(
         id: eventId,
-        organizerId: user.id,
+        organizerId: eventOrganizerId,
         title: _title.text.trim(),
         description: _description.text.trim(),
         category: _category,
@@ -397,7 +401,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       if (widget.eventId == null) {
         await events.create(eventId, event);
       } else {
-        await events.updateOwned(eventId, {
+        final changes = <String, dynamic>{
           'title': event.title,
           'description': event.description,
           'category': event.category,
@@ -410,7 +414,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
           'endTime': event.endTime,
           'maxParticipants': event.maxParticipants,
           'imageUrl': _imageUrl,
-        });
+        };
+        if (widget.adminMode) {
+          await events.updateAsAdmin(eventId, changes);
+        } else {
+          await events.updateOwned(eventId, changes);
+        }
         if (_imageUrl != previousImageUrl &&
             previousImageUrl != null &&
             previousImageUrl.isNotEmpty) {

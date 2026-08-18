@@ -23,14 +23,14 @@ service cloud.firestore {
         && request.resource.data.role == 'attendee'
         && request.resource.data.active == true
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.createdAt == null;
+        && request.resource.data.createdAt is timestamp;
       allow update: if isAdmin() && (
         request.auth.uid != userId
         || (request.resource.data.role == resource.data.role
             && request.resource.data.active == resource.data.active)
       ) || (
         request.auth.uid == userId
-        && hasOnlyChanged(['name', 'phone', 'profileImageUrl', 'organizerRequested', 'remindersEnabled'])
+        && hasOnlyChanged(['name', 'phone', 'profileImageUrl', 'organizerRequested', 'remindersEnabled', 'fcmTokens'])
         && request.resource.data.email == resource.data.email
       );
       allow delete: if isAdmin();
@@ -39,6 +39,7 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if signedIn() && (
         isAdmin() || resource.data.organizerId == request.auth.uid || resource.data.status == 'approved'
+        || exists(/databases/$(database)/documents/registrations/$(request.auth.uid + '_' + eventId))
       );
       allow create: if (isOrganizer() || isAdmin())
         && request.resource.data.organizerId == request.auth.uid

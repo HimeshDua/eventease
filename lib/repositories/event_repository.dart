@@ -45,6 +45,21 @@ class EventRepository {
       .snapshots()
       .map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
 
+  /// Loads only events referenced by the current user's registrations.
+  /// Firestore supports up to 30 IDs in a whereIn query, which is more than
+  /// enough for the small school-project usage while keeping reads scoped.
+  Stream<List<Event>> byIds(List<String> eventIds) {
+    final ids = eventIds.where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return Stream.value(const <Event>[]);
+    if (ids.length > 30) {
+      throw StateError('Too many registered events to load at once.');
+    }
+    return _events
+        .where(FieldPath.documentId, whereIn: ids)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(Event.fromDoc).toList());
+  }
+
   /// Admin: everything; display ordering belongs to the presentation layer.
   Stream<List<Event>> all() => _events.snapshots().map(
     (snapshot) => snapshot.docs.map(Event.fromDoc).toList(),
@@ -151,11 +166,40 @@ class EventRepository {
     String eventId,
     String status, {
     bool changeReviewPending = false,
+    String? cancellationReason,
   }) => _events.doc(eventId).update({
     'status': status,
     'changeReviewPending': changeReviewPending,
+    if (status == EventStatus.cancelled) 'cancellationReason': cancellationReason?.trim(),
+    if (status != EventStatus.cancelled) 'cancellationReason': null,
     'updatedAt': FieldValue.serverTimestamp(),
   });
+
+  /// Admin-only event edits. Keeps the original organizer and lifecycle
+  /// fields intact while allowing system-wide event management.
+  Future<void> updateAsAdmin(String eventId, Map<String, dynamic> changes) async {
+    const protectedFields = {
+      'organizerId',
+      'registeredCount',
+      'status',
+      'cancellationRequested',
+      'cancellationReason',
+      'changeReviewPending',
+      'createdAt',
+    };
+    if (changes.keys.any(protectedFields.contains)) {
+      throw ArgumentError('Admin edits may not overwrite protected event fields.');
+    }
+    final snapshot = await _events.doc(eventId).get();
+    if (!snapshot.exists) throw StateError('Event not found.');
+    final event = Event.fromDoc(snapshot);
+    if (event.hasStarted || event.status == EventStatus.cancelled) {
+      throw StateError('Started or cancelled events cannot be edited.');
+    }
+    final update = <String, dynamic>{...changes};
+    update['updatedAt'] = FieldValue.serverTimestamp();
+    await _events.doc(eventId).update(update);
+  }
 
   /// An organizer can request cancellation but cannot cancel an event directly.
   Future<void> requestCancellation(String eventId, String reason) async {

@@ -7,7 +7,9 @@ service firebase.storage {
         && request.resource.size < 10 * 1024 * 1024;
     }
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.active == true
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /profiles/{userId}/avatar.jpg {
@@ -17,7 +19,7 @@ service firebase.storage {
 
     match /events/{ownerId}/{eventId}/cover.jpg {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == ownerId
+      allow write: if signedIn() && (request.auth.uid == ownerId || isAdmin())
         && imageUpload()
         && firestore.exists(/databases/(default)/documents/events/$(eventId));
       allow delete: if signedIn() && (request.auth.uid == ownerId || isAdmin());
@@ -26,7 +28,7 @@ service firebase.storage {
     match /gallery/{userId}/{eventId}/{imageId} {
       allow read: if signedIn();
       allow write: if signedIn() && imageUpload()
-        && firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizerId == request.auth.uid;
+        && (firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizerId == request.auth.uid || isAdmin());
       allow delete: if signedIn() && (
         firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizerId == request.auth.uid
         || isAdmin()

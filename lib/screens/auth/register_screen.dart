@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
 
+  final _nameFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _phoneFocus = FocusNode();
   final _passwordFocus = FocusNode();
@@ -36,6 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phone.dispose();
     _password.dispose();
     _confirmPassword.dispose();
+    _nameFocus.dispose();
     _emailFocus.dispose();
     _phoneFocus.dispose();
     _passwordFocus.dispose();
@@ -46,7 +48,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _nameFocus.unfocus();
+      _emailFocus.unfocus();
+      _phoneFocus.unfocus();
+      _passwordFocus.unfocus();
+      _confirmFocus.unfocus();
+    });
     final messenger = ScaffoldMessenger.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     try {
@@ -62,7 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SnackBar(content: Text('Registration successful!')),
       );
       Navigator.pop(context);
-    // Registration failures include email-already-in-use, weak password, and network issues.
+      // Registration failures include email-already-in-use, weak password, and network issues.
     } catch (e) {
       if (mounted) {
         messenger.showSnackBar(
@@ -91,6 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               TextFormField(
                 controller: _name,
                 enabled: !_busy,
+                focusNode: _nameFocus,
                 decoration: const InputDecoration(labelText: 'Full Name'),
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.name],

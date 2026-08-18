@@ -294,7 +294,11 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
     }
     setState(() => _busy = true);
     try {
-      await events.setStatus(widget.event.id, EventStatus.cancelled);
+      await events.setStatus(
+        widget.event.id,
+        EventStatus.cancelled,
+        cancellationReason: reason,
+      );
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -415,7 +419,7 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EventFormScreen(eventId: current.id),
+                    builder: (_) => EventFormScreen(eventId: current.id, adminMode: true),
                   ),
                 ),
                 icon: const Icon(Icons.edit_outlined),

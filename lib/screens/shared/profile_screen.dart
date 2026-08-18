@@ -111,6 +111,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final formKey = GlobalKey<FormState>();
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
+    final currentFocus = FocusNode();
+    final newFocus = FocusNode();
     bool busy = false;
     String? errorText;
 
@@ -135,6 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   controller: currentCtrl,
                   label: 'Current password',
                   enabled: !busy,
+                  focusNode: currentFocus,
                   autofillHints: const [AutofillHints.password],
                   validator: (v) => (v == null || v.isEmpty)
                       ? 'Current password is required'
@@ -145,6 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   controller: newCtrl,
                   label: 'New password',
                   enabled: !busy,
+                  focusNode: newFocus,
                   autofillHints: const [AutofillHints.newPassword],
                   validator: AuthValidators.password,
                 ),
@@ -164,6 +168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       setDialogState(() {
                         busy = true;
                         errorText = null;
+                        currentFocus.unfocus();
+                        newFocus.unfocus();
                       });
                       try {
                         await auth.changePassword(
@@ -199,6 +205,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     currentCtrl.dispose();
     newCtrl.dispose();
+    currentFocus.dispose();
+    newFocus.dispose();
   }
 
   Future<void> _toggleReminders(

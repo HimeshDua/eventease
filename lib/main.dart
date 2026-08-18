@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,11 +17,15 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/blocked_account_screen.dart';
 import 'screens/shell.dart';
 import 'services/auth_service.dart';
+import 'services/fcm_notification_service.dart';
 import 'widgets/common.dart';
+
+final rootMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   runApp(
     MultiProvider(
@@ -36,6 +41,7 @@ Future<void> main() async {
         Provider(create: (_) => GalleryRepository()),
         Provider(create: (_) => ContactRepository()),
         Provider(create: (_) => MapLauncherService()),
+        Provider(create: (_) => FcmNotificationService()),
       ],
       child: const EventEaseApp(),
     ),
@@ -52,6 +58,7 @@ class EventEaseApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
+      scaffoldMessengerKey: rootMessengerKey,
       debugShowCheckedModeBanner: false,
       home: const AuthGate(),
     );
@@ -96,6 +103,25 @@ class AuthGate extends StatelessWidget {
           return const LoginScreen();
         }
         if (!user.active) return const BlockedAccountScreen();
+        final fcm = context.read<FcmNotificationService>();
+        fcm.initializeForUser(
+          user.id,
+          onMessage: (message) {
+            final notification = message.notification;
+            if (notification != null) {
+              rootMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    notification.body == null || notification.body!.isEmpty
+                        ? notification.title ?? 'New EventEase notification'
+                        : '${notification.title ?? 'EventEase'}: ${notification.body}',
+                  ),
+                ),
+              );
+            }
+          },
+          onOpened: (message) {},
+        );
         return HomeShell(user: user);
       },
     );

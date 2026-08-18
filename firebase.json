@@ -1,1 +1,44 @@
-{"firestore":{"database":"(default)","location":"asia-south1","rules":"firestore.rules","indexes":"firestore.indexes.json"},"auth":{"providers":{"emailPassword":true,"googleSignIn":{"oAuthBrandDisplayName":"Eventease-0","supportEmail":"support@undefined.firebaseapp.com"}}},"flutter":{"platforms":{"android":{"default":{"projectId":"eventease-555","appId":"1:1089391987104:android:11a3cfe67cfae4119f3cc5","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"eventease-555","configurations":{"android":"1:1089391987104:android:11a3cfe67cfae4119f3cc5","ios":"1:1089391987104:ios:298ad9e4009da59f9f3cc5","macos":"1:1089391987104:ios:298ad9e4009da59f9f3cc5","web":"1:1089391987104:web:74f2aa2fdcd63b069f3cc5","windows":"1:1089391987104:web:50d67fef9952559d9f3cc5"}}}}}}
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-south1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Eventease-0",
+        "supportEmail": "support@undefined.firebaseapp.com"
+      }
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "eventease-555",
+          "appId": "1:1089391987104:android:11a3cfe67cfae4119f3cc5",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "eventease-555",
+          "configurations": {
+            "android": "1:1089391987104:android:11a3cfe67cfae4119f3cc5",
+            "ios": "1:1089391987104:ios:298ad9e4009da59f9f3cc5",
+            "macos": "1:1089391987104:ios:298ad9e4009da59f9f3cc5",
+            "web": "1:1089391987104:web:74f2aa2fdcd63b069f3cc5",
+            "windows": "1:1089391987104:web:50d67fef9952559d9f3cc5"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions",
+    "codebase": "default"
+  }
+}
