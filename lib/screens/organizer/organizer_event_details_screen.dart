@@ -8,6 +8,7 @@ import '../../models/registration.dart';
 import '../../repositories/event_repository.dart';
 import '../../repositories/misc_repositories.dart';
 import '../../repositories/registration_repository.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
 import '../shared/gallery_screen.dart';
 import 'announcements_screen.dart';
@@ -49,7 +50,14 @@ class OrganizerEventDetailsScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const LoadingView();
           }
-          final event = snapshot.data!;
+          final event = snapshot.data;
+          if (event == null) {
+            return const ErrorView('This event could not be found.');
+          }
+          final currentUserId = context.read<AuthService>().currentUser?.id;
+          if (currentUserId == null || event.organizerId != currentUserId) {
+            return const ErrorView('You can only manage your own events.');
+          }
           return StreamBuilder<List<Registration>>(
             stream: context.read<RegistrationRepository>().byEvent(eventId),
             builder: (context, regSnapshot) {

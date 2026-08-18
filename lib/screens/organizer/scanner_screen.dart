@@ -27,7 +27,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_scanLocked) return;
+    final registrationRepo = context.read<RegistrationRepository>();
     _scanLocked = true;
+    await _scanner.stop();
     final code = capture.barcodes.isEmpty
         ? null
         : capture.barcodes.first.rawValue;
@@ -40,9 +42,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
       return;
     }
     try {
-      final registration = await context
-          .read<RegistrationRepository>()
-          .checkInByQr(code, widget.eventId);
+      final registration =
+          await registrationRepo.checkInByQr(code, widget.eventId);
       _showResult(
         'Check-in successful for registration ${registration.id}.',
         isError: false,
@@ -65,6 +66,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       _scanResult = null;
       _scanLocked = false;
     });
+    _scanner.start();
   }
 
   @override

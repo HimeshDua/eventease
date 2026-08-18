@@ -37,8 +37,17 @@ service cloud.firestore {
         && request.resource.data.latitude is number
         && request.resource.data.longitude is number;
       allow update: if isAdmin() || (
-        isOrganizer() && resource.data.organizerId == request.auth.uid
-        && request.resource.data.status != 'approved'
+        isOrganizer()
+        && resource.data.organizerId == request.auth.uid
+        && request.resource.data.organizerId == resource.data.organizerId
+        && request.resource.data.registeredCount == resource.data.registeredCount
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          request.resource.data.status == resource.data.status
+          || (resource.data.status == 'approved'
+              && request.resource.data.status == 'pending'
+              && request.resource.data.changeReviewPending == true)
+        )
       ) || (
         activeUser() && hasOnlyChanged(['registeredCount'])
         && (request.resource.data.registeredCount == resource.data.registeredCount + 1
@@ -88,7 +97,11 @@ service cloud.firestore {
     }
 
     match /feedback/{feedbackId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid
+        || isAdmin()
+        || ownsEvent(resource.data.eventId)
+      );
       allow create: if activeUser()
         && feedbackId == request.auth.uid + '_' + request.resource.data.eventId
         && request.resource.data.userId == request.auth.uid
