@@ -10,18 +10,28 @@ service cloud.firestore {
     function ownsEvent(eventId) {
       return signedIn() && get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid;
     }
-    function hasOnlyChanged(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+    function hasOnlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys)
+        && request.resource.data.diff(resource.data).affectedKeys().size() > 0;
+    }
+    function eventExists(eventId) { return exists(/databases/$(database)/documents/events/$(eventId)); }
+    function getEvent(eventId) { return get(/databases/$(database)/documents/events/$(eventId)).data; }
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.role == 'attendee'
         && request.resource.data.active == true
-        && request.resource.data.email == request.auth.token.email;
-      allow update: if isAdmin() || (
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == null;
+      allow update: if isAdmin() && (
+        request.auth.uid != userId
+        || (request.resource.data.role == resource.data.role
+            && request.resource.data.active == resource.data.active)
+      ) || (
         request.auth.uid == userId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.active == resource.data.active
+        && hasOnlyChanged(['name', 'phone', 'profileImageUrl', 'organizerRequested', 'remindersEnabled'])
+        && request.resource.data.email == resource.data.email
       );
       allow delete: if isAdmin();
     }
@@ -42,6 +52,7 @@ service cloud.firestore {
         && request.resource.data.organizerId == resource.data.organizerId
         && request.resource.data.registeredCount == resource.data.registeredCount
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.maxParticipants >= resource.data.registeredCount
         && (
           request.resource.data.status == resource.data.status
           || (resource.data.status == 'approved'
@@ -63,17 +74,29 @@ service cloud.firestore {
       allow create: if activeUser()
         && registrationId == request.auth.uid + '_' + request.resource.data.eventId
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'registered';
+        && request.resource.data.status == 'registered'
+        && eventExists(request.resource.data.eventId)
+        && getEvent(request.resource.data.eventId).status == 'approved'
+        && getEvent(request.resource.data.eventId).startTime > request.time
+        && getEvent(request.resource.data.eventId).registeredCount < getEvent(request.resource.data.eventId).maxParticipants;
       allow update: if (
         request.auth.uid == resource.data.userId
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.eventId == resource.data.eventId
         && request.resource.data.status == 'cancelled'
+        && resource.data.status == 'registered'
       ) || (
         (isAdmin() || ownsEvent(resource.data.eventId))
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.eventId == resource.data.eventId
         && request.resource.data.status == 'attended'
+        && resource.data.status == 'registered'
+      ) || (
+        request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.eventId == resource.data.eventId
+        && request.resource.data.status == 'registered'
+        && resource.data.status == 'cancelled'
       );
       allow delete: if isAdmin();
     }
@@ -86,7 +109,13 @@ service cloud.firestore {
         || ownsEvent(resource.data.eventId)
       );
       allow create: if (isAdmin() || ownsEvent(request.resource.data.eventId))
-        && attendanceId == request.resource.data.userId + '_' + request.resource.data.eventId;
+        && attendanceId == request.resource.data.userId + '_' + request.resource.data.eventId
+        && exists(/databases/$(database)/documents/registrations/$(attendanceId))
+        && get(/databases/$(database)/documents/registrations/$(attendanceId)).data.userId == request.resource.data.userId
+        && get(/databases/$(database)/documents/registrations/$(attendanceId)).data.eventId == request.resource.data.eventId
+        && get(/databases/$(database)/documents/registrations/$(attendanceId)).data.status == 'registered'
+        && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organizerId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -107,6 +136,9 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.rating is int
         && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && exists(/databases/$(database)/documents/registrations/$(feedbackId))
+        && get(/databases/$(database)/documents/registrations/$(feedbackId)).data.userId == request.auth.uid
+        && get(/databases/$(database)/documents/registrations/$(feedbackId)).data.eventId == request.resource.data.eventId
         && get(/databases/$(database)/documents/registrations/$(feedbackId)).data.status == 'attended';
       allow update, delete: if isAdmin();
     }
@@ -125,8 +157,10 @@ service cloud.firestore {
     match /gallery/{galleryId} {
       allow read: if signedIn();
       allow create: if (isAdmin() || ownsEvent(request.resource.data.eventId))
-        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.endTime <= request.time;
-      allow delete: if isAdmin() || ownsEvent(resource.data.eventId);
+        && eventExists(request.resource.data.eventId)
+        && (getEvent(request.resource.data.eventId).status == 'completed'
+            || getEvent(request.resource.data.eventId).endTime <= request.time);
+      allow delete: if isAdmin() || ownsEvent(request.resource.data.eventId);
     }
 
     match /contactMessages/{messageId} {

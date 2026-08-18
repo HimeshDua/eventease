@@ -4,20 +4,28 @@ import 'package:provider/provider.dart';
 
 import '../../models/gallery_item.dart';
 import '../../repositories/gallery_repository.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/common.dart';
 
 /// Full gallery grid for a completed event (SRS 1.6.18).
-class GalleryScreen extends StatelessWidget {
+class GalleryScreen extends StatefulWidget {
   final String eventId;
   const GalleryScreen({super.key, required this.eventId});
 
   @override
+  State<GalleryScreen> createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<GalleryScreen> {
+  @override
   Widget build(BuildContext context) {
     final gallery = context.read<GalleryRepository>();
+    final user = context.read<AuthService>().currentUser;
+    final canDelete = user != null && user.role == 'admin';
     return Scaffold(
       appBar: AppBar(title: const Text('Event gallery')),
       body: StreamBuilder<List<GalleryItem>>(
-        stream: gallery.byEvent(eventId),
+        stream: gallery.byEvent(widget.eventId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const ErrorView('Could not load the gallery.');
@@ -42,6 +50,7 @@ class GalleryScreen extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
+              final isOwner = user != null && user.id == item.uploadedBy;
               return ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
@@ -80,6 +89,18 @@ class GalleryScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                      if (canDelete || isOwner)
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => _deleteGalleryItem(context, item),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -89,6 +110,36 @@ class GalleryScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _deleteGalleryItem(
+    BuildContext context,
+    GalleryItem item,
+  ) async {
+    final gallery = context.read<GalleryRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await confirm(
+      context,
+      'Delete photo?',
+      'This will permanently remove this photo from the gallery.',
+    );
+    if (!confirmed) return;
+    try {
+      await gallery.delete(item);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Photo deleted.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(AuthService.friendlyError(error)),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
+    }
   }
 
   void _openFullScreen(BuildContext context, GalleryItem item) {

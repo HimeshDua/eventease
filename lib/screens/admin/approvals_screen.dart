@@ -17,8 +17,6 @@ class ApprovalsScreen extends StatefulWidget {
 }
 
 class _ApprovalsScreenState extends State<ApprovalsScreen> {
-  final Set<String> _approvedChangeNotified = {};
-
   @override
   Widget build(BuildContext context) {
     final events = context.read<EventRepository>();
@@ -182,14 +180,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   /// M25: when approving a critical-change re-review, notify active registrants.
   void _notifyRegistrantsIfChanged(Event event) {
     if (!event.changeReviewPending) return;
-    if (_approvedChangeNotified.add(event.id)) {
-      context.read<NotificationRepository>().sendToEventRegistrants(
-        eventId: event.id,
-        type: NotificationTypes.eventChanged,
-        title: 'Event updated',
-        message: '${event.title} has been updated and re-approved.',
-      );
-    }
+    context.read<NotificationRepository>().sendToEventRegistrants(
+      eventId: event.id,
+      type: NotificationTypes.eventChanged,
+      title: 'Event updated',
+      message: '${event.title} has been updated and re-approved.',
+    );
   }
 }
 
@@ -218,16 +214,6 @@ class _OrganizerRequestCardState extends State<_OrganizerRequestCard> {
     setState(() => _busy = true);
     try {
       await users.approveOrganizerRequest(widget.user.id);
-      await notifications.send(
-        userId: widget.user.id,
-        type: NotificationTypes.roleApproved,
-        title: 'Organizer access approved',
-        message: 'You can now create and manage events.',
-      );
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Organizer request approved.')),
-      );
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -236,9 +222,24 @@ class _OrganizerRequestCardState extends State<_OrganizerRequestCard> {
           backgroundColor: colorScheme.errorContainer,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      return;
     }
+    try {
+      await notifications.send(
+        userId: widget.user.id,
+        type: NotificationTypes.roleApproved,
+        title: 'Organizer access approved',
+        message: 'You can now create and manage events.',
+      );
+    } catch (error) {
+      debugPrint('Notification failed: $error');
+    }
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Organizer request approved.')),
+    );
+    setState(() => _busy = false);
   }
 
   Future<void> _reject() async {
@@ -349,17 +350,6 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     setState(() => _busy = true);
     try {
       await events.setStatus(widget.event.id, EventStatus.approved);
-      await notifications.send(
-        userId: widget.event.organizerId,
-        eventId: widget.event.id,
-        type: NotificationTypes.approval,
-        title: 'Event approved',
-        message: '${widget.event.title} has been approved.',
-      );
-      widget.onApproved();
-      if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Event approved.')));
-      // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -368,9 +358,28 @@ class _PendingEventCardState extends State<_PendingEventCard> {
           backgroundColor: colorScheme.errorContainer,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      return;
     }
+    try {
+      await notifications.send(
+        userId: widget.event.organizerId,
+        eventId: widget.event.id,
+        type: NotificationTypes.approval,
+        title: 'Event approved',
+        message: '${widget.event.title} has been approved.',
+      );
+    } catch (error) {
+      debugPrint('Notification failed: $error');
+    }
+    try {
+      widget.onApproved();
+    } catch (error) {
+      debugPrint('Registrant notification failed: $error');
+    }
+    if (!mounted) return;
+    messenger.showSnackBar(const SnackBar(content: Text('Event approved.')));
+    setState(() => _busy = false);
   }
 
   Future<void> _reject() async {
@@ -408,6 +417,18 @@ class _PendingEventCardState extends State<_PendingEventCard> {
     setState(() => _busy = true);
     try {
       await events.setStatus(widget.event.id, EventStatus.rejected);
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(friendlyError(error)),
+          backgroundColor: colorScheme.errorContainer,
+        ),
+      );
+      setState(() => _busy = false);
+      return;
+    }
+    try {
       await notifications.send(
         userId: widget.event.organizerId,
         eventId: widget.event.id,
@@ -417,20 +438,12 @@ class _PendingEventCardState extends State<_PendingEventCard> {
             ? '${widget.event.title} was not approved.'
             : '${widget.event.title} was not approved. Reason: $reason',
       );
-      if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Event rejected.')));
-      // Approve/reject events: Firestore write failure or notification fan-out error
     } catch (error) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(friendlyError(error)),
-          backgroundColor: colorScheme.errorContainer,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      debugPrint('Notification failed: $error');
     }
+    if (!mounted) return;
+    messenger.showSnackBar(const SnackBar(content: Text('Event rejected.')));
+    setState(() => _busy = false);
   }
 
   @override
@@ -521,17 +534,6 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
     setState(() => _busy = true);
     try {
       await events.approveCancellation(widget.event.id);
-      await notifications.sendToEventRegistrants(
-        eventId: widget.event.id,
-        type: NotificationTypes.cancelled,
-        title: 'Event cancelled',
-        message: '${widget.event.title} has been cancelled.',
-      );
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Cancellation approved.')),
-      );
-      // Approve/reject cancellations: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -540,9 +542,24 @@ class _CancellationRequestCardState extends State<_CancellationRequestCard> {
           backgroundColor: colorScheme.errorContainer,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      return;
     }
+    try {
+      await notifications.sendToEventRegistrants(
+        eventId: widget.event.id,
+        type: NotificationTypes.cancelled,
+        title: 'Event cancelled',
+        message: '${widget.event.title} has been cancelled.',
+      );
+    } catch (error) {
+      debugPrint('Notification failed: $error');
+    }
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Cancellation approved.')),
+    );
+    setState(() => _busy = false);
   }
 
   Future<void> _reject() async {

@@ -6,17 +6,31 @@ service firebase.storage {
       return request.resource.contentType.matches('image/.*')
         && request.resource.size < 10 * 1024 * 1024;
     }
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     match /profiles/{userId}/avatar.jpg {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == userId && imageUpload();
     }
+
     match /events/{ownerId}/{eventId}/cover.jpg {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == ownerId && imageUpload();
+      allow write: if signedIn() && request.auth.uid == ownerId
+        && imageUpload()
+        && firestore.exists(/databases/(default)/documents/events/$(eventId));
+      allow delete: if signedIn() && (request.auth.uid == ownerId || isAdmin());
     }
-    match /gallery/{eventId}/{imageId} {
+
+    match /gallery/{userId}/{eventId}/{imageId} {
       allow read: if signedIn();
-      allow write: if signedIn() && imageUpload();
+      allow write: if signedIn() && imageUpload()
+        && firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizerId == request.auth.uid;
+      allow delete: if signedIn() && (
+        firestore.get(/databases/(default)/documents/events/$(eventId)).data.organizerId == request.auth.uid
+        || isAdmin()
+      );
     }
   }
 }

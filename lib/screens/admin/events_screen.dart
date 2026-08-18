@@ -8,6 +8,7 @@ import '../../repositories/misc_repositories.dart';
 import '../../widgets/common.dart';
 import '../organizer/event_form_screen.dart';
 import '../organizer/participants_screen.dart';
+import '../shared/gallery_screen.dart';
 
 /// Admin event management: view, search, filter, edit, cancel, delete (SRS 1.6.16).
 class EventsScreen extends StatefulWidget {
@@ -294,15 +295,6 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
     setState(() => _busy = true);
     try {
       await events.setStatus(widget.event.id, EventStatus.cancelled);
-      await notifications.sendToEventRegistrants(
-        eventId: widget.event.id,
-        type: NotificationTypes.cancelled,
-        title: 'Event cancelled',
-        message: '${widget.event.title} has been cancelled. Reason: $reason',
-      );
-      if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('Event cancelled.')));
-    // Cancel: Firestore write failure or notification fan-out error
     } catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -311,9 +303,22 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
           backgroundColor: colorScheme.errorContainer,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      setState(() => _busy = false);
+      return;
     }
+    try {
+      await notifications.sendToEventRegistrants(
+        eventId: widget.event.id,
+        type: NotificationTypes.cancelled,
+        title: 'Event cancelled',
+        message: '${widget.event.title} has been cancelled. Reason: $reason',
+      );
+    } catch (error) {
+      debugPrint('Notification failed: $error');
+    }
+    if (!mounted) return;
+    messenger.showSnackBar(const SnackBar(content: Text('Event cancelled.')));
+    setState(() => _busy = false);
   }
 
   Future<void> _delete() async {
@@ -393,6 +398,17 @@ class _AdminEventDetailsState extends State<_AdminEventDetails> {
                 ),
                 icon: const Icon(Icons.group_outlined),
                 label: const Text('View participants'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GalleryScreen(eventId: current.id),
+                  ),
+                ),
+                icon: const Icon(Icons.photo_outlined),
+                label: const Text('View gallery'),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(

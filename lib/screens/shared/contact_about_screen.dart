@@ -72,9 +72,6 @@ class _ContactAboutScreenState extends State<ContactAboutScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthService>().currentUser;
-    if (user == null) {
-      return const ErrorView('Please sign in to contact support.');
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Contact & About')),
       body: ListView(
@@ -107,48 +104,50 @@ class _ContactAboutScreenState extends State<ContactAboutScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Send us a message',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            initialValue: user.name,
-            readOnly: true,
-            decoration: const InputDecoration(labelText: 'Name'),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: user.email,
-            readOnly: true,
-            decoration: const InputDecoration(labelText: 'Email'),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _subject,
-            decoration: const InputDecoration(labelText: 'Subject'),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _message,
-            decoration: const InputDecoration(
-              labelText: 'Message',
-              alignLabelWithHint: true,
+          if (user != null) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Send us a message',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            maxLines: 5,
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _busy ? null : _submit,
-            child: _busy
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Send message'),
-          ),
+            const SizedBox(height: 8),
+            TextFormField(
+              initialValue: user.name,
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              initialValue: user.email,
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _subject,
+              decoration: const InputDecoration(labelText: 'Subject'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _message,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                alignLabelWithHint: true,
+              ),
+              maxLines: 5,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _busy ? null : _submit,
+              child: _busy
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send message'),
+            ),
+          ],
         ],
       ),
     );

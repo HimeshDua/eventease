@@ -159,15 +159,19 @@ class NotificationRepository {
           : start + maxBatchWrites;
       final batch = _db.batch();
       for (final registration in regs.docs.sublist(start, end)) {
-        batch.set(_db.collection(Col.notifications).doc(), {
-          'userId': registration['userId'],
-          'eventId': eventId,
-          'type': type,
-          'title': title,
-          'message': message,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        final userId = registration['userId'] as String;
+        batch.set(
+          _db.collection(Col.notifications).doc('${eventId}_${type}_$userId'),
+          {
+            'userId': userId,
+            'eventId': eventId,
+            'type': type,
+            'title': title,
+            'message': message,
+            'isRead': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+        );
       }
       await batch.commit();
     }
